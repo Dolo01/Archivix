@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const superAdminApi = axios.create({ baseURL: "/api/superadmin" });
+const superAdminApi = axios.create({ baseURL: `${import.meta.env.VITE_API_URL || ""}/api/superadmin` });
 
 superAdminApi.interceptors.request.use((config) => {
   const token = localStorage.getItem("archivix_superadmin_token");
