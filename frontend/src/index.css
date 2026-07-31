@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-paper text-ink font-body antialiased;
+}
+
+::selection {
+  @apply bg-brass/30;
+}
+
+*:focus-visible {
+  outline: 2px solid #8B5CF6;
+  outline-offset: 2px;
+}
+
+/* Défilement plus fin et discret */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(30, 27, 46, 0.18);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 27, 46, 0.3);
+  background-clip: content-box;
+}
+
+/* Apparition douce du contenu principal (opacité seule : un transform, même à 0,
+   créerait un contexte de positionnement qui piégerait les modales "fixed" à
+   l'intérieur de cette zone au lieu de tout l'écran) */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-in {
+  animation: fadeInUp 0.35s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold tracking-tight transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none;
+}
+
+.btn-primary {
+  @apply btn bg-ink text-paper px-5 py-2.5 shadow-card hover:bg-ink-light hover:shadow-lg hover:-translate-y-px active:translate-y-0 active:scale-[0.97];
+}
+
+.btn-brass {
+  @apply btn bg-brass text-white px-5 py-2.5 shadow-card hover:bg-brass-dark hover:shadow-lg hover:-translate-y-px active:translate-y-0 active:scale-[0.97];
+}
+
+.btn-success {
+  @apply btn bg-success text-white px-5 py-2.5 shadow-card hover:bg-success-dark hover:shadow-lg hover:-translate-y-px active:translate-y-0 active:scale-[0.97];
+}
+
+.btn-danger {
+  @apply btn bg-danger text-white px-5 py-2.5 shadow-card hover:bg-danger-dark hover:shadow-lg hover:-translate-y-px active:translate-y-0 active:scale-[0.97];
+}
+
+.btn-info {
+  @apply btn bg-info text-white px-5 py-2.5 shadow-card hover:bg-info-dark hover:shadow-lg hover:-translate-y-px active:translate-y-0 active:scale-[0.97];
+}
+
+.btn-ghost {
+  @apply btn bg-transparent text-ink px-4 py-2 hover:bg-ink/5 active:scale-[0.97];
+}
+
+.btn-outline {
+  @apply btn border-2 border-ink/15 text-ink px-4 py-2 hover:border-brass/50 hover:bg-brass/5 active:scale-[0.97];
+}
+
+/* Boutons d'action ronds pour les tableaux (icônes) */
+.icon-btn {
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-full transition-all duration-150 hover:scale-110 active:scale-90;
+}
+.icon-btn-neutral {
+  @apply icon-btn text-ink/50 hover:bg-ink/[0.07] hover:text-ink;
+}
+.icon-btn-info {
+  @apply icon-btn text-info hover:bg-info-light;
+}
+.icon-btn-brass {
+  @apply icon-btn text-brass-dark hover:bg-brass/15;
+}
+.icon-btn-success {
+  @apply icon-btn text-success-dark hover:bg-success-light;
+}
+.icon-btn-danger {
+  @apply icon-btn text-danger hover:bg-danger-light;
+}
+
+.input {
+  @apply w-full rounded-xl border border-ink/15 bg-white/70 px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/35 transition-shadow duration-150 focus:border-brass focus:ring-4 focus:ring-brass/15 outline-none;
+}
+
+.card {
+  @apply rounded-2xl border border-ink/10 bg-white/60 shadow-card;
+}
+
+.card-interactive {
+  @apply card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg;
+}
+
+.label-eyebrow {
+  @apply text-xs font-mono uppercase tracking-[0.14em] text-ink/50;
+}

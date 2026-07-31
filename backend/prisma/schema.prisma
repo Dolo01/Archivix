@@ -1,0 +1,184 @@
+// Schéma de base de données Archivix — PostgreSQL (ex : Supabase, gratuit et permanent).
+// Documentation : https://www.prisma.io/docs
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id                    String    @id @default(cuid())
+  name                  String
+  slug                  String    @unique
+  sector                String?
+  logoUrl               String?
+  plan                  String    @default("essai") // essai | starter | pro | business | entreprise
+  storageQuotaMb        Float     @default(5000)
+  storageUsedMb         Float     @default(0)
+  isActive              Boolean   @default(true)
+  subscriptionExpiresAt DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  users                User[]
+  departments          Department[]
+  folders              Folder[]
+  documents            Document[]
+  categories           Category[]
+  messages             Message[]
+  subscriptionRequests SubscriptionRequest[]
+  notifications        Notification[]
+}
+
+model User {
+  id           String      @id @default(cuid())
+  tenantId     String
+  tenant       Tenant      @relation(fields: [tenantId], references: [id])
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  fullName     String
+  email        String
+  passwordHash String
+  role         String      @default("lecteur")
+  isActive     Boolean     @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  documents     Document[]
+  messages      Message[]
+  notifications Notification[]
+
+  @@unique([tenantId, email])
+}
+
+model SuperAdmin {
+  id           String   @id @default(cuid())
+  fullName     String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  decisions SubscriptionRequest[]
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  name        String
+  description String?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  members   User[]
+  folders   Folder[]
+  documents Document[]
+
+  @@unique([tenantId, name])
+}
+
+model Folder {
+  id           String     @id @default(cuid())
+  tenantId     String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id])
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  name         String
+  description  String?
+  sharedWithDepartments String @default("[]")
+  createdById  String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  documents Document[]
+
+  @@unique([departmentId, name])
+}
+
+model Category {
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id])
+  name     String
+  color    String  @default("#B8860B")
+  parentId String?
+
+  documents Document[]
+}
+
+model Document {
+  id           String      @id @default(cuid())
+  tenantId     String
+  tenant       Tenant      @relation(fields: [tenantId], references: [id])
+  departmentId String
+  department   Department  @relation(fields: [departmentId], references: [id])
+  folderId     String?
+  folder       Folder?     @relation(fields: [folderId], references: [id])
+  title        String
+  reference    String?
+  categoryId   String?
+  category     Category?   @relation(fields: [categoryId], references: [id])
+  tags         String      @default("[]")
+  sharedWithDepartments String @default("[]")
+  fileName     String
+  fileUrl      String
+  mimeType     String
+  sizeKb       Float
+  uploadedById String
+  uploadedBy   User        @relation(fields: [uploadedById], references: [id])
+  status       String      @default("archive")
+  version      Int         @default(1)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  messages Message[]
+}
+
+model SubscriptionRequest {
+  id               String      @id @default(cuid())
+  tenantId         String
+  tenant           Tenant      @relation(fields: [tenantId], references: [id])
+  plan             String      // starter | pro | business
+  dureeMois        Int         @default(12)
+  montant          Float
+  moyenPaiement    String
+  numeroExpediteur String
+  reference        String
+  captureUrl       String?
+  status           String      @default("en_attente")
+  motifRefus       String?
+  decidedById      String?
+  decidedBy        SuperAdmin? @relation(fields: [decidedById], references: [id])
+  decidedAt        DateTime?
+  createdAt        DateTime    @default(now())
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+  content    String
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
