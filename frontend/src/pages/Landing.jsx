@@ -292,7 +292,7 @@ export default function Landing() {
           <div className="flex gap-6">
             <Link to="/connexion" className="hover:text-ink">Connexion</Link>
             <Link to="/confidentialite" className="hover:text-ink">Confidentialité</Link>
-            <a href="mailto:support@archivix.example" className="hover:text-ink">Contact</a>
+            <a href="mailto:supportarchivix@gmail.com" className="hover:text-ink">Contact</a>
           </div>
         </div>
       </footer>

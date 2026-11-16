@@ -2,8 +2,8 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import Logo from "../components/Logo.jsx";
 
-// ⚠️ À personnaliser avant publication : adresse de contact et date de mise à jour.
-const CONTACT_EMAIL = "support@archivix.example";
+// Adresse de contact affichée publiquement et date de dernière mise à jour de la politique.
+const CONTACT_EMAIL = "supportarchivix@gmail.com";
 const UPDATED_AT = "16 novembre 2026";
 
 function Section({ id, title, children }) {

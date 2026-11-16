@@ -13,7 +13,7 @@ exports.coordonnees = (req, res) => {
       numero: process.env.ORANGE_MONEY_NUMBER || "+223 00 00 00 00",
       nomBeneficiaire: process.env.PAYMENT_BENEFICIARY_NAME || "Archivix",
     },
-    contactEntreprise: process.env.PAYMENT_BENEFICIARY_EMAIL || "contact@archivix.example",
+    contactEntreprise: process.env.PAYMENT_BENEFICIARY_EMAIL || "supportarchivix@gmail.com",
     offres: OFFRES_AFFICHEES.map((id) => {
       const p = PLANS[id];
       return {
