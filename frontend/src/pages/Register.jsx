@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Building2, User, Mail, ArrowRight, Sparkles } from "lucide-react";
+import { Building2, User, Mail } from "lucide-react";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
 import AuthLayout from "../components/AuthLayout.jsx";
@@ -52,12 +52,12 @@ export default function Register() {
 
   return (
     <AuthLayout
-      badge={<><Sparkles size={13} /> 14 jours gratuits · sans engagement</>}
-      title="Créez l'espace de votre organisation"
-      subtitle="En 2 minutes, sans carte bancaire. Vous serez l'administrateur de cet espace."
+      eyebrow="Essai gratuit de 14 jours"
+      title="Création de l'espace de votre organisation"
+      subtitle="Sans engagement ni moyen de paiement. Le compte créé sera l'administrateur de l'espace."
       footer={
         <>
-          Déjà un compte ?{" "}
+          Votre organisation dispose déjà d'un espace ?{" "}
           <Link to="/connexion" className="font-semibold text-brand hover:text-brand-dark">Se connecter</Link>
         </>
       }
@@ -89,10 +89,10 @@ export default function Register() {
 
         {error && <p className="alert-error">{error}</p>}
 
-        <button type="submit" disabled={loading} className="btn-primary group w-full py-3 text-[15px]">
-          {loading ? "Création de votre espace…" : (<>Démarrer l'essai gratuit <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" /></>)}
+        <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-[15px]">
+          {loading ? "Création de l'espace…" : "Créer l'espace"}
         </button>
-        <p className="text-center text-xs leading-relaxed text-ink/45">
+        <p className="text-xs leading-relaxed text-ink/50">
           En créant un compte, vous acceptez notre{" "}
           <Link to="/confidentialite" className="underline hover:text-ink">politique de confidentialité</Link>.
         </p>

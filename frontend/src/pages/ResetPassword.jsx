@@ -61,7 +61,7 @@ export default function ResetPassword() {
     <AuthLayout
       title={invalid ? "Lien expiré" : title}
       subtitle={invalid ? undefined : subtitle}
-      footer={<Link to="/connexion" className="font-semibold text-brand hover:text-brand-dark">Retour à la connexion</Link>}
+      footer={<Link to="/connexion" className="font-semibold text-brand hover:text-brand-dark">← Retour à la connexion</Link>}
     >
       {invalid ? (
         <div className="space-y-4">
