@@ -61,7 +61,10 @@ export default function Register() {
         <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
           {loading ? "Création…" : "Démarrer l'essai gratuit"}
         </button>
-        <p className="text-center text-xs text-ink/45">Vous serez l'administrateur de cet espace.</p>
+        <p className="text-center text-xs text-ink/45">
+          Vous serez l'administrateur de cet espace. En créant un compte, vous acceptez notre{" "}
+          <Link to="/confidentialite" className="underline hover:text-ink">politique de confidentialité</Link>.
+        </p>
       </form>
     </AuthLayout>
   );

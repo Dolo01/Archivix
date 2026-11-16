@@ -2,7 +2,8 @@ const prisma = require("../config/prisma");
 const { notifyDepartmentMembers } = require("../utils/notify");
 const jwt = require("jsonwebtoken");
 const { Readable } = require("stream");
-const { saveFile } = require("../utils/storage");
+const fs = require("fs");
+const { saveFile, useSupabase, pathFromUrl, signedSupabaseUrl, localFilePath } = require("../utils/storage");
 const drive = require("../utils/googleDrive");
 
 // Renvoie (en le créant au besoin) le sous-dossier Drive du département.
@@ -162,7 +163,9 @@ exports.upload = async (req, res) => {
         parentId,
       });
     } else {
-      ({ url: fileUrl } = await saveFile(req.file.buffer, req.file.originalname, `documents/${req.tenantId}`, req.file.mimetype));
+      const saved = await saveFile(req.file.buffer, req.file.originalname, `documents/${req.tenantId}`, req.file.mimetype);
+      fileUrl = saved.url;
+      storageKey = saved.path;
     }
 
     const doc = await prisma.document.create({
@@ -249,15 +252,26 @@ exports.remove = async (req, res) => {
   res.json({ message: "Document supprimé." });
 };
 
-// Lien d'ouverture d'un document. Pour Google Drive, les fichiers restent privés :
-// on délivre un lien signé valable 5 minutes, après vérification des droits de l'utilisateur.
+// Lien d'ouverture d'un document, délivré après vérification des droits de l'utilisateur.
+// Aucun fichier n'est accessible par une URL publique permanente : le lien expire au bout de 5 minutes.
 exports.link = async (req, res) => {
   const where = await buildScopeWhere(req);
   const doc = await prisma.document.findFirst({ where: { ...where, id: req.params.id } });
   if (!doc) return res.status(404).json({ message: "Document introuvable ou accès non autorisé." });
 
-  if (doc.storageProvider !== "google_drive") return res.json({ url: doc.fileUrl });
+  // Stockage Supabase : lien temporaire généré par Supabase (bucket privé).
+  const isLocalFile = doc.fileUrl.startsWith("/uploads/");
+  if (doc.storageProvider !== "google_drive" && !isLocalFile && useSupabase) {
+    const objectPath = doc.storageKey || pathFromUrl(doc.fileUrl);
+    if (!objectPath) return res.json({ url: doc.fileUrl });
+    try {
+      return res.json({ url: await signedSupabaseUrl(objectPath, 300) });
+    } catch (err) {
+      return res.status(502).json({ message: "Impossible d'ouvrir ce document pour le moment.", error: err.message });
+    }
+  }
 
+  // Google Drive ou disque local : le serveur diffuse lui-même le fichier via un lien signé.
   const jeton = jwt.sign({ purpose: "fichier", documentId: doc.id, tenantId: doc.tenantId }, process.env.JWT_SECRET, {
     expiresIn: "5m",
   });
@@ -276,13 +290,24 @@ exports.streamFile = async (req, res) => {
 
   try {
     const doc = await prisma.document.findFirst({ where: { id: payload.documentId, tenantId: payload.tenantId } });
-    if (!doc || doc.storageProvider !== "google_drive") return res.status(404).send("Document introuvable.");
+    if (!doc) return res.status(404).send("Document introuvable.");
+
+    const disposition = `inline; filename*=UTF-8''${encodeURIComponent(doc.fileName)}`;
+    if (doc.storageProvider !== "google_drive") {
+      const full = localFilePath(doc.storageKey || pathFromUrl(doc.fileUrl) || "");
+      if (!full || !fs.existsSync(full)) return res.status(404).send("Fichier introuvable sur le serveur.");
+      res.setHeader("Content-Type", doc.mimeType || "application/octet-stream");
+      res.setHeader("Content-Disposition", disposition);
+      res.setHeader("Cache-Control", "private, no-store");
+      return fs.createReadStream(full).pipe(res);
+    }
+
     const tenant = await prisma.tenant.findUnique({ where: { id: doc.tenantId } });
     const accessToken = await drive.getAccessToken(tenant);
     const upstream = await drive.downloadFile(accessToken, doc.storageKey);
 
     res.setHeader("Content-Type", doc.mimeType || "application/octet-stream");
-    res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(doc.fileName)}`);
+    res.setHeader("Content-Disposition", disposition);
     res.setHeader("Cache-Control", "private, no-store");
     const length = upstream.headers.get("content-length");
     if (length) res.setHeader("Content-Length", length);

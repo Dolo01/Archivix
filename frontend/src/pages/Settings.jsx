@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CheckCircle2, AlertTriangle, ExternalLink, Unplug, ShieldCheck, FolderOpen, Info } from "lucide-react";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -131,6 +131,14 @@ export default function Settings() {
                 <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-brand" /> Les droits d'accès d'Archivix (départements, rôles, partages) continuent de s'appliquer.</li>
                 <li className="flex gap-2"><Info size={16} className="mt-0.5 shrink-0 text-ink/40" /> L'espace utilisé est celui de votre Drive ; le quota Archivix ne s'applique plus.</li>
               </ul>
+              <p className="mt-3 text-xs leading-relaxed text-ink/50">
+                L'utilisation et le transfert par Archivix des informations reçues des API Google respectent les{" "}
+                <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noreferrer" className="underline hover:text-ink">
+                  règles relatives aux données utilisateur des services d'API Google
+                </a>
+                , y compris les exigences d'utilisation limitée. Détails dans notre{" "}
+                <Link to="/confidentialite#google" className="underline hover:text-ink">politique de confidentialité</Link>.
+              </p>
 
               {!connected && status?.configured && (
                 <p className="mt-4 rounded-lg border border-warning/25 bg-warning-light/50 px-3.5 py-2.5 text-sm text-warning-dark">

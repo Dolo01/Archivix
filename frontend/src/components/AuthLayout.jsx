@@ -21,7 +21,10 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
             {footer && <p className="mt-8 text-center text-sm text-ink/55">{footer}</p>}
           </div>
         </div>
-        <p className="text-xs text-ink/40">© {new Date().getFullYear()} Archivix</p>
+        <p className="flex gap-4 text-xs text-ink/40">
+          <span>© {new Date().getFullYear()} Archivix</span>
+          <Link to="/confidentialite" className="hover:text-ink">Politique de confidentialité</Link>
+        </p>
       </div>
 
       <div className="relative hidden overflow-hidden bg-ink lg:flex lg:flex-col lg:justify-between lg:p-12">

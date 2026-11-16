@@ -315,6 +315,7 @@ export default function Landing() {
           <p>© {new Date().getFullYear()} Archivix · Bamako, Mali</p>
           <div className="flex gap-6">
             <Link to="/connexion" className="hover:text-ink">Connexion</Link>
+            <Link to="/confidentialite" className="hover:text-ink">Confidentialité</Link>
             <a href="mailto:support@archivix.example" className="hover:text-ink">Contact</a>
           </div>
         </div>

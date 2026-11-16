@@ -18,7 +18,9 @@ Tout se pilote depuis un seul tableau de bord Render, avec des adresses du type 
    postgresql://postgres.xxxxx:[TON-MOT-DE-PASSE]@aws-0-xxxx.pooler.supabase.com:6543/postgres
    ```
    Remplace `[TON-MOT-DE-PASSE]` par le mot de passe choisi à l'étape 2. **C'est ta variable `DATABASE_URL`.**
-4. Va dans **Storage** (menu de gauche) → **New bucket** → nomme-le `archivix` → coche **Public bucket** → crée-le.
+4. Va dans **Storage** (menu de gauche) → **New bucket** → nomme-le `archivix` → laisse **Public bucket** **décoché** → crée-le.
+
+   🔒 Le bucket doit être **privé** : Archivix ouvre chaque document avec un lien temporaire (5 minutes), délivré après vérification des droits. **Si ton bucket existe déjà en public**, ouvre ses réglages (**Edit bucket**) et décoche **Public bucket** : les anciennes adresses publiques cesseront de fonctionner, et les documents existants resteront accessibles normalement depuis Archivix.
 5. Va dans **Project Settings → API** :
    - Copie **Project URL** → c'est `SUPABASE_URL`
    - Copie la clé **service_role** (pas la clé `anon` !) → c'est `SUPABASE_SERVICE_ROLE_KEY`. Cette clé est secrète, ne la mets jamais dans le frontend.
@@ -77,7 +79,7 @@ Retourne dans ton **Web Service** (backend) → **Environment** → mets à jour
 ## 5. Tester
 
 - Va sur ton URL de Static Site → inscris une entreprise test → vérifie que l'essai de 14 jours s'affiche.
-- Archive un document → vérifie dans Supabase (**Storage → archivix**) que le fichier est bien apparu.
+- Archive un document → vérifie dans Supabase (**Storage → archivix**) que le fichier est bien apparu, puis ouvre-le depuis Archivix (le lien doit contenir `token=` et cesser de fonctionner après 5 minutes).
 - Va sur `https://archivix-backend.onrender.com/api/health` pour un test rapide du backend.
 - Connecte-toi en super-admin sur `https://archivix-frontend.onrender.com/superadmin/connexion`.
 - Recharge la page sur une route profonde comme `/app/documents` pour vérifier que la règle de réécriture fonctionne (pas de 404).
@@ -93,7 +95,7 @@ Archivix ne demande que l'autorisation `drive.file` : il n'accède qu'aux fichie
 1. Va sur https://console.cloud.google.com → crée un projet (ex. « Archivix »).
 2. **API et services → Bibliothèque** → cherche **Google Drive API** → **Activer**.
 3. **Google Auth Platform** (anciennement « Écran de consentement OAuth ») :
-   - **Branding** : nom de l'application (« Archivix »), e-mail d'assistance, logo, lien vers la page d'accueil et vers une politique de confidentialité (obligatoire pour publier).
+   - **Branding** : nom de l'application (« Archivix »), e-mail d'assistance, logo, lien vers la page d'accueil (`https://archivix-frontend.onrender.com`) et vers la politique de confidentialité (`https://archivix-frontend.onrender.com/confidentialite`, déjà intégrée à l'application ; pense à y remplacer l'adresse de contact dans `frontend/src/pages/Privacy.jsx`).
    - **Audience** : type d'utilisateur **Externe**.
    - **Data Access** (accès aux données) : ajoute l'autorisation `.../auth/drive.file`.
 4. **Google Auth Platform → Clients → Créer un client** :

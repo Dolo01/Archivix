@@ -33,7 +33,10 @@ app.use(morgan("dev"));
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
 app.use("/api", limiter);
 
-// Fichiers archivés et captures de paiement servis statiquement
+// Stockage local (développement) : les documents archivés ne sont JAMAIS servis en accès libre,
+// uniquement via /api/documents/:id/fichier avec un lien signé. Seules les captures de paiement
+// restent servies statiquement (affichées dans l'espace super-admin).
+app.use("/uploads/documents", (req, res) => res.status(404).json({ message: "Ressource introuvable." }));
 app.use("/uploads", express.static(path.join(process.cwd(), process.env.UPLOAD_DIR || "uploads")));
 
 app.get("/api/health", (req, res) => res.json({ status: "ok", service: "archivix-api" }));

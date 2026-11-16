@@ -4,6 +4,7 @@ import { useSuperAdmin } from "./context/SuperAdminContext.jsx";
 import Landing from "./pages/Landing.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
+import Privacy from "./pages/Privacy.jsx";
 import DashboardLayout from "./layouts/DashboardLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Documents from "./pages/Documents.jsx";
@@ -52,6 +53,7 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/connexion" element={<Login />} />
       <Route path="/inscription" element={<Register />} />
+      <Route path="/confidentialite" element={<Privacy />} />
 
       <Route path="/superadmin/connexion" element={<SuperAdminLogin />} />
       <Route
