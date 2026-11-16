@@ -7,7 +7,7 @@ const prisma = require("../config/prisma");
 const configured = Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
 
 if (configured) {
-  const contact = process.env.VAPID_SUBJECT || `mailto:${process.env.PAYMENT_BENEFICIARY_EMAIL || "contact@archivix.app"}`;
+  const contact = process.env.VAPID_SUBJECT || `mailto:${process.env.PAYMENT_BENEFICIARY_EMAIL || "supportarchivix@gmail.com"}`;
   webpush.setVapidDetails(contact, process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
 }
 

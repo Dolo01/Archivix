@@ -154,7 +154,7 @@ export default function DashboardLayout() {
 
       <div className="border-t border-line p-3">
         <a
-          href="mailto:support@archivix.example"
+          href="mailto:supportarchivix@gmail.com"
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-ink/65 hover:bg-ink/[0.04] hover:text-ink"
         >
           <LifeBuoy size={17} /> Assistance
