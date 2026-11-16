@@ -123,6 +123,17 @@ Tant que l'application est en statut **Test** (Google Auth Platform → **Audien
 
 Connecte-toi en administrateur d'une organisation → **Paramètres** → **Connecter Google Drive** → accepte l'autorisation → archive un document → vérifie qu'il apparaît dans le Drive, dans `Archivix — …/Nom du département/`.
 
+## 7. Notifications sur téléphone, tablette et ordinateur
+
+1. Génère une paire de clés **une seule fois** (ne la change plus ensuite, sinon les appareils devront se réabonner) :
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+2. Dans Render → service **Archivix** → **Environment**, ajoute `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` et `VAPID_SUBJECT` (`mailto:` suivi de ton adresse de contact).
+3. Chaque utilisateur active les notifications depuis la cloche → **Activer** :
+   - ordinateur (Chrome, Edge, Firefox, Safari) et Android : directement ;
+   - iPhone / iPad (iOS 16.4 ou plus) : d'abord **Partager → Sur l'écran d'accueil**, puis ouvrir Archivix depuis l'icône et activer.
+
 ## Limites du plan gratuit (à connaître)
 
 - Render free (Web Service) : mise en veille après inactivité (cold start ~30-60s), 750h/mois gratuites par workspace.

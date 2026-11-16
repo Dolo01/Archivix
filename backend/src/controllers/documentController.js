@@ -1,9 +1,9 @@
 const prisma = require("../config/prisma");
-const { notifyDepartmentMembers } = require("../utils/notify");
+const { notifyUsers, membersOfDepartments, adminsOf } = require("../utils/notify");
 const jwt = require("jsonwebtoken");
 const { Readable } = require("stream");
 const fs = require("fs");
-const { saveFile, pathFromUrl, temporaryUrl, localFilePath, deleteFile, kindOf } = require("../utils/storage");
+const { saveFile, pathFromUrl, temporaryUrl, localFilePath, deleteFile, kindOf, readFileStream } = require("../utils/storage");
 const drive = require("../utils/googleDrive");
 const { logActivity, STATUS_LABEL } = require("../utils/activity");
 
@@ -196,14 +196,19 @@ exports.upload = async (req, res) => {
       });
     }
 
-    notifyDepartmentMembers(req.app, {
-      tenantId: req.tenantId,
-      departmentId,
-      type: "document_ajoute",
-      message: `${req.user.fullName} a archivé « ${doc.title} » dans votre département.`,
-      link: "/app/documents",
-      excludeUserId: req.user.id,
-    }).catch(() => { });
+    // Membres du département + administrateurs (hors auteur)
+    Promise.all([membersOfDepartments(req.tenantId, [departmentId]), adminsOf(req.tenantId)])
+      .then(([members, admins]) =>
+        notifyUsers(req.app, {
+          tenantId: req.tenantId,
+          userIds: [...members, ...admins],
+          type: "document_ajoute",
+          message: `${req.user.fullName} a archivé « ${doc.title} ».`,
+          link: `/app/documents/${doc.id}`,
+          excludeUserId: req.user.id,
+        })
+      )
+      .catch(() => {});
 
     await logActivity(req, { action: "archivage", document: doc, details: onDrive ? "Stocké dans Google Drive" : null });
 
@@ -232,6 +237,21 @@ exports.update = async (req, res) => {
 
   // Journal : on distingue le partage des autres modifications
   if (sharedWithDepartments !== undefined && existing.sharedWithDepartments !== data.sharedWithDepartments) {
+    // Notifie seulement les départements nouvellement ajoutés au partage
+    const before = JSON.parse(existing.sharedWithDepartments || "[]");
+    const added = sharedWithDepartments.filter((id) => !before.includes(id));
+    membersOfDepartments(req.tenantId, added)
+      .then((ids) =>
+        notifyUsers(req.app, {
+          tenantId: req.tenantId,
+          userIds: ids,
+          type: "document_partage",
+          message: `${req.user.fullName} a partagé « ${doc.title} » avec votre département.`,
+          link: `/app/documents/${doc.id}`,
+          excludeUserId: req.user.id,
+        })
+      )
+      .catch(() => {});
     const depts = sharedWithDepartments.length
       ? await prisma.department.findMany({ where: { id: { in: sharedWithDepartments } }, select: { name: true } })
       : [];
@@ -366,4 +386,33 @@ exports.history = async (req, res) => {
     take: 30,
   });
   res.json(entries);
+};
+
+// Contenu du fichier servi par Archivix lui-même (après vérification des droits), pour l'impression :
+// le navigateur peut alors l'afficher dans un cadre invisible et lancer la boîte d'impression.
+exports.content = async (req, res) => {
+  const where = await buildScopeWhere(req);
+  const doc = await prisma.document.findFirst({ where: { ...where, id: req.params.id } });
+  if (!doc) return res.status(404).json({ message: "Document introuvable ou accès non autorisé." });
+
+  try {
+    let stream;
+    if (doc.storageProvider === "google_drive") {
+      const tenant = await prisma.tenant.findUnique({ where: { id: doc.tenantId } });
+      const accessToken = await drive.getAccessToken(tenant);
+      const upstream = await drive.downloadFile(accessToken, doc.storageKey);
+      stream = Readable.fromWeb(upstream.body);
+    } else {
+      stream = await readFileStream(doc.fileUrl);
+    }
+    if (req.query.usage === "impression") await logActivity(req, { action: "impression", document: doc });
+    res.setHeader("Content-Type", doc.mimeType || "application/octet-stream");
+    res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(doc.fileName)}`);
+    res.setHeader("Cache-Control", "private, no-store");
+    stream.on("error", () => res.destroy());
+    stream.pipe(res);
+  } catch (err) {
+    if (err instanceof drive.DriveError) return driveErrorResponse(res, err, "Impossible de récupérer le fichier.");
+    res.status(502).json({ message: "Impossible de récupérer le fichier pour le moment." });
+  }
 };

@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  Search, UploadCloud, Plus, MessageSquare, Pencil, Trash2, ExternalLink, Share2,
+  Search, UploadCloud, Plus, MessageSquare, Pencil, Trash2, ExternalLink, Share2, Printer,
   FolderPlus, Folder, FolderOpen, FileText, ChevronLeft, ChevronRight, Users,
 } from "lucide-react";
 import api from "../api/client";
-import { openDocument } from "../api/files";
+import { openDocument, printDocument } from "../api/files";
 import SealBadge from "../components/SealBadge.jsx";
 import Modal from "../components/Modal.jsx";
 import DocumentChat from "../components/DocumentChat.jsx";
@@ -83,6 +83,19 @@ export default function Documents() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const [printingId, setPrintingId] = useState(null);
+
+  async function handlePrint(doc) {
+    setPrintingId(doc.id);
+    try {
+      const note = await printDocument(doc);
+      if (note) alert(note);
+    } catch (err) {
+      alert(err.response?.data?.message || "Impossible d'imprimer ce document pour le moment.");
+    } finally {
+      setPrintingId(null);
+    }
+  }
 
   function fetchDocuments(q = urlQuery, folderId = activeFolder, status = statusFilter, p = page) {
     setLoading(true);
@@ -474,8 +487,11 @@ export default function Documents() {
                         <td>
                           <div className="flex items-center justify-end gap-0.5">
                             <button onClick={() => setChatDoc(doc)} title="Discussion" className="icon-btn-info"><MessageSquare size={15} /></button>
-                            <button onClick={() => openDocument(doc)} title="Ouvrir / imprimer" className="icon-btn-neutral">
+                            <button onClick={() => openDocument(doc)} title="Ouvrir" aria-label="Ouvrir" className="icon-btn-neutral">
                               <ExternalLink size={15} />
+                            </button>
+                            <button onClick={() => handlePrint(doc)} disabled={printingId === doc.id} title="Imprimer" aria-label="Imprimer" className="icon-btn-neutral">
+                              <Printer size={15} className={printingId === doc.id ? "animate-pulse" : ""} />
                             </button>
                             {canManage && (
                               <>

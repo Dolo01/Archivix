@@ -212,3 +212,17 @@ model ActivityLog {
   @@index([tenantId, createdAt])
   @@index([documentId])
 }
+
+// Appareils (navigateur d'ordinateur, téléphone, tablette) abonnés aux notifications Web Push.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
