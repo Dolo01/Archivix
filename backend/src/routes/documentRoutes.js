@@ -13,6 +13,7 @@ router.get("/", documentController.list);
 router.get("/:id", documentController.getOne);
 router.get("/:id/lien", documentController.link);
 router.get("/:id/historique", documentController.history);
+router.get("/:id/contenu", documentController.content);
 router.post("/", upload.single("file"), documentController.upload);
 router.patch("/:id", requireRole("admin", "gestionnaire"), documentController.update);
 router.delete("/:id", requireRole("admin", "gestionnaire"), documentController.remove);

@@ -1,10 +1,11 @@
 const prisma = require("../config/prisma");
 const { hasFeature, planOf } = require("../utils/plans");
 
-const ACTIONS = ["archivage", "consultation", "modification", "partage", "suppression"];
+const ACTIONS = ["archivage", "consultation", "impression", "modification", "partage", "suppression"];
 const ACTION_LABEL = {
   archivage: "Archivage",
   consultation: "Consultation",
+  impression: "Impression",
   modification: "Modification",
   partage: "Partage",
   suppression: "Suppression",

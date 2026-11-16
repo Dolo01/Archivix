@@ -3,7 +3,7 @@ const { notifyUsers, membersOfDepartments, adminsOf } = require("../utils/notify
 const jwt = require("jsonwebtoken");
 const { Readable } = require("stream");
 const fs = require("fs");
-const { saveFile, pathFromUrl, temporaryUrl, localFilePath, deleteFile, kindOf } = require("../utils/storage");
+const { saveFile, pathFromUrl, temporaryUrl, localFilePath, deleteFile, kindOf, readFileStream } = require("../utils/storage");
 const drive = require("../utils/googleDrive");
 const { logActivity, STATUS_LABEL } = require("../utils/activity");
 
@@ -386,4 +386,33 @@ exports.history = async (req, res) => {
     take: 30,
   });
   res.json(entries);
+};
+
+// Contenu du fichier servi par Archivix lui-même (après vérification des droits), pour l'impression :
+// le navigateur peut alors l'afficher dans un cadre invisible et lancer la boîte d'impression.
+exports.content = async (req, res) => {
+  const where = await buildScopeWhere(req);
+  const doc = await prisma.document.findFirst({ where: { ...where, id: req.params.id } });
+  if (!doc) return res.status(404).json({ message: "Document introuvable ou accès non autorisé." });
+
+  try {
+    let stream;
+    if (doc.storageProvider === "google_drive") {
+      const tenant = await prisma.tenant.findUnique({ where: { id: doc.tenantId } });
+      const accessToken = await drive.getAccessToken(tenant);
+      const upstream = await drive.downloadFile(accessToken, doc.storageKey);
+      stream = Readable.fromWeb(upstream.body);
+    } else {
+      stream = await readFileStream(doc.fileUrl);
+    }
+    if (req.query.usage === "impression") await logActivity(req, { action: "impression", document: doc });
+    res.setHeader("Content-Type", doc.mimeType || "application/octet-stream");
+    res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(doc.fileName)}`);
+    res.setHeader("Cache-Control", "private, no-store");
+    stream.on("error", () => res.destroy());
+    stream.pipe(res);
+  } catch (err) {
+    if (err instanceof drive.DriveError) return driveErrorResponse(res, err, "Impossible de récupérer le fichier.");
+    res.status(502).json({ message: "Impossible de récupérer le fichier pour le moment." });
+  }
 };

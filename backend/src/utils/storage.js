@@ -141,6 +141,34 @@ async function temporaryUrl(fileUrl, { seconds = 300, fileName, mimeType } = {})
   return null;
 }
 
+/**
+ * Lit le contenu d'un fichier (Neon S3, Supabase ou disque local) sous forme de flux Node.
+ * Utilisé pour l'impression : le navigateur doit recevoir le fichier depuis le serveur Archivix.
+ */
+async function readFileStream(fileUrl) {
+  const { Readable } = require("stream");
+  const kind = kindOf(fileUrl);
+  const objectPath = pathFromUrl(fileUrl);
+  if (kind === "s3") {
+    if (!useS3) throw new Error("Stockage S3 non configuré.");
+    const { GetObjectCommand } = require("@aws-sdk/client-s3");
+    const out = await s3.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: objectPath }));
+    return out.Body;
+  }
+  if (kind === "supabase") {
+    if (!supabase) throw new Error("Supabase n'est plus configuré.");
+    const { data, error } = await supabase.storage.from(SUPABASE_BUCKET).download(objectPath);
+    if (error) throw new Error(error.message);
+    return Readable.from(Buffer.from(await data.arrayBuffer()));
+  }
+  if (kind === "local") {
+    const full = localFilePath(objectPath || "");
+    if (!full || !fs.existsSync(full)) throw new Error("Fichier introuvable sur le serveur.");
+    return fs.createReadStream(full);
+  }
+  throw new Error("Emplacement du fichier inconnu.");
+}
+
 // Chemin absolu d'un fichier local, en refusant toute sortie du dossier d'upload ("../").
 function localFilePath(relativePath) {
   const full = path.resolve(LOCAL_UPLOAD_DIR, relativePath);
@@ -188,4 +216,5 @@ module.exports = {
   localFilePath,
   displayUrl,
   deleteFile,
+  readFileStream,
 };

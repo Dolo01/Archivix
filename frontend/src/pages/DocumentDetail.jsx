@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, ExternalLink, Share2, Pencil, Trash2, FileText, Image as ImageIcon, FileSpreadsheet,
-  History, MessageSquare, Info,
+  History, MessageSquare, Info, Printer,
 } from "lucide-react";
 import api from "../api/client";
+import { printDocument } from "../api/files";
 import { useAuth } from "../context/AuthContext.jsx";
 import SealBadge from "../components/SealBadge.jsx";
 import Modal from "../components/Modal.jsx";
@@ -98,6 +99,20 @@ export default function DocumentDetail() {
     } catch (err) {
       tab?.close();
       alert(err.response?.data?.message || "Impossible d'ouvrir ce document.");
+    }
+  }
+
+  const [printing, setPrinting] = useState(false);
+  async function handlePrint() {
+    setPrinting(true);
+    try {
+      const note = await printDocument(doc);
+      if (note) alert(note);
+      loadHistory();
+    } catch (err) {
+      alert(err.response?.data?.message || "Impossible d'imprimer ce document pour le moment.");
+    } finally {
+      setPrinting(false);
     }
   }
 
@@ -200,6 +215,7 @@ export default function DocumentDetail() {
         </div>
         <div className="flex flex-wrap gap-2">
           <button onClick={openFull} className="btn-secondary"><ExternalLink size={16} /> Ouvrir</button>
+          <button onClick={handlePrint} disabled={printing} className="btn-secondary"><Printer size={16} /> {printing ? "Préparation…" : "Imprimer"}</button>
           {canManage && (
             <>
               <button onClick={() => setShareOpen(true)} className="btn-secondary"><Share2 size={16} /> Partager</button>

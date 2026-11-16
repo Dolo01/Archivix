@@ -2,6 +2,7 @@
 export const ACTION_META = {
   archivage: { label: "Archivage", badge: "badge-success", dot: "bg-success" },
   consultation: { label: "Consultation", badge: "badge-neutral", dot: "bg-ink/30" },
+  impression: { label: "Impression", badge: "badge-neutral", dot: "bg-ink/50" },
   modification: { label: "Modification", badge: "badge-brand", dot: "bg-brand" },
   partage: { label: "Partage", badge: "badge-warning", dot: "bg-warning" },
   suppression: { label: "Suppression", badge: "badge-danger", dot: "bg-danger" },
@@ -10,6 +11,7 @@ export const ACTION_META = {
 const VERBES = {
   archivage: "a archivé",
   consultation: "a consulté",
+  impression: "a imprimé",
   modification: "a modifié",
   partage: "a modifié le partage de",
   suppression: "a supprimé",
