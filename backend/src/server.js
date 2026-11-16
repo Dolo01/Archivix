@@ -26,6 +26,10 @@ const integrationRoutes = require("./routes/integrationRoutes");
 const app = express();
 const httpServer = http.createServer(app);
 
+// Render (comme la plupart des hébergeurs) place un relais devant l'application : sans ce réglage,
+// tous les visiteurs auraient la même adresse IP et partageraient la même limite de requêtes.
+app.set("trust proxy", 1);
+
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors({ origin: process.env.FRONTEND_URL || "*", credentials: true }));
 app.use(express.json({ limit: "5mb" }));
