@@ -17,7 +17,11 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 }, // 20 Mo
   fileFilter: (req, file, cb) => {
     if (allowedMimeTypes.includes(file.mimetype)) return cb(null, true);
-    cb(new Error("Type de fichier non pris en charge."));
+    const err = new Error(
+      `Le fichier « ${file.originalname} » n'est pas pris en charge. Formats acceptés : PDF, images (PNG, JPEG), Word et Excel.`
+    );
+    err.status = 400;
+    cb(err);
   },
 });
 

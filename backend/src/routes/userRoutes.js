@@ -29,13 +29,36 @@ router.post("/", requireRole("admin"), async (req, res) => {
       }
     }
 
-    const { fullName, email, password, role, departmentId } = req.body;
-    const passwordHash = await bcrypt.hash(password, 10);
+    const { fullName, role, departmentId, password } = req.body;
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!fullName?.trim()) return res.status(400).json({ message: "Indiquez le nom complet du membre." });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: "Adresse e-mail invalide." });
+    if (!password || String(password).length < 6) {
+      return res.status(400).json({ message: "Le mot de passe temporaire doit contenir au moins 6 caractères." });
+    }
+    if (role && !["admin", "gestionnaire", "lecteur"].includes(role)) {
+      return res.status(400).json({ message: "Rôle invalide." });
+    }
+
+    const existing = await prisma.user.findFirst({ where: { tenantId: req.tenantId, email } });
+    if (existing) {
+      return res.status(409).json({
+        message: existing.id === req.user.id
+          ? "Cette adresse est celle de votre propre compte : vous êtes déjà membre de l'organisation."
+          : `${existing.fullName} utilise déjà cette adresse e-mail dans votre organisation.`,
+      });
+    }
+    if (departmentId) {
+      const dept = await prisma.department.findFirst({ where: { id: departmentId, tenantId: req.tenantId } });
+      if (!dept) return res.status(400).json({ message: "Ce département n'existe plus. Rechargez la page et réessayez." });
+    }
+
+    const passwordHash = await bcrypt.hash(String(password), 10);
     const user = await prisma.user.create({
       data: {
         tenantId: req.tenantId,
-        fullName,
-        email: email.toLowerCase(),
+        fullName: fullName.trim(),
+        email,
         passwordHash,
         role: role || "lecteur",
         departmentId: departmentId || null,
@@ -45,7 +68,11 @@ router.post("/", requireRole("admin"), async (req, res) => {
     const { passwordHash: _, ...safeUser } = user;
     res.status(201).json(safeUser);
   } catch (err) {
-    res.status(400).json({ message: "Impossible de créer l'utilisateur.", error: err.message });
+    if (err.code === "P2002") {
+      return res.status(409).json({ message: "Un membre utilise déjà cette adresse e-mail dans votre organisation." });
+    }
+    console.error("[Membres] création impossible :", err.message);
+    res.status(500).json({ message: "Impossible d'ajouter ce membre pour le moment. Réessayez dans un instant." });
   }
 });
 

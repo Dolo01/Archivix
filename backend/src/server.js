@@ -66,8 +66,13 @@ app.use((req, res) => {
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(err.status || 500).json({ message: err.message || "Erreur serveur interne." });
+  // Fichier trop volumineux (limite multer)
+  if (err.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ message: "Fichier trop volumineux : 20 Mo maximum par fichier." });
+  }
+  const status = err.status || 500;
+  if (status >= 500) console.error(err);
+  res.status(status).json({ message: status >= 500 ? "Erreur serveur interne." : err.message });
 });
 
 // --- Socket.io : discussion instantanée + notifications en temps réel ---
