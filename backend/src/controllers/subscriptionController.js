@@ -1,5 +1,5 @@
 const prisma = require("../config/prisma");
-const { PLANS, OFFRES_DEMANDABLES } = require("../utils/plans");
+const { PLANS, OFFRES_DEMANDABLES, OFFRES_AFFICHEES, montantPour } = require("../utils/plans");
 const { saveFile, displayUrl } = require("../utils/storage");
 
 // Coordonnées de paiement affichées à l'entreprise (comptes de l'exploitant de la plateforme)
@@ -14,22 +14,36 @@ exports.coordonnees = (req, res) => {
       nomBeneficiaire: process.env.PAYMENT_BENEFICIARY_NAME || "Archivix",
     },
     contactEntreprise: process.env.PAYMENT_BENEFICIARY_EMAIL || "contact@archivix.example",
-    offres: [
-      { id: "starter", label: PLANS.starter.label, maxUsers: PLANS.starter.maxUsers, prixAnnuel: PLANS.starter.prixAnnuel },
-      { id: "pro", label: PLANS.pro.label, maxUsers: PLANS.pro.maxUsers, prixAnnuel: PLANS.pro.prixAnnuel },
-      { id: "business", label: PLANS.business.label, maxUsers: PLANS.business.maxUsers, prixAnnuel: PLANS.business.prixAnnuel },
-      { id: "entreprise", label: PLANS.entreprise.label, maxUsers: null, prixAnnuel: null, surDevis: true },
-    ],
+    offres: OFFRES_AFFICHEES.map((id) => {
+      const p = PLANS[id];
+      return {
+        id,
+        label: p.label,
+        description: p.description,
+        maxUsers: p.maxUsers,
+        prixMensuel: p.prixMensuel,
+        prixAnnuel: p.prixAnnuel,
+        quotaMb: p.quotaMb,
+        features: p.features,
+        recommande: Boolean(p.recommande),
+        surDevis: Boolean(p.surDevis),
+      };
+    }),
   });
 };
 
 // Réservé admin : soumettre une demande d'abonnement/réabonnement après dépôt Wave/Orange Money
-// (facturation annuelle uniquement — l'offre Enterprise se négocie sur devis, hors de ce flux)
+// (paiement mensuel ou annuel — l'offre Institution se négocie sur devis, hors de ce flux)
 exports.create = async (req, res) => {
   try {
     const { plan, moyenPaiement, numeroExpediteur, reference } = req.body;
+    const dureeMois = Number(req.body.dureeMois || 12);
     if (!OFFRES_DEMANDABLES.includes(plan)) {
-      return res.status(400).json({ message: "Offre invalide. Choisissez Starter, Pro ou Business." });
+      return res.status(400).json({ message: "Offre invalide. Choisissez Essentiel, Professionnel ou Business." });
+    }
+    const montant = montantPour(plan, dureeMois);
+    if (!montant) {
+      return res.status(400).json({ message: "Durée invalide : choisissez un paiement mensuel ou annuel." });
     }
     if (!["wave", "orange_money"].includes(moyenPaiement)) {
       return res.status(400).json({ message: "Moyen de paiement invalide." });
@@ -48,8 +62,8 @@ exports.create = async (req, res) => {
       data: {
         tenantId: req.tenantId,
         plan,
-        dureeMois: 12,
-        montant: PLANS[plan].prixAnnuel,
+        dureeMois,
+        montant,
         moyenPaiement,
         numeroExpediteur,
         reference,

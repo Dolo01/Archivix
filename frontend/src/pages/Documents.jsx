@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Search, UploadCloud, Plus, MessageSquare, Pencil, Trash2, ExternalLink, Share2,
   FolderPlus, Folder, FolderOpen, FileText, ChevronLeft, ChevronRight, Users,
@@ -240,8 +240,10 @@ export default function Documents() {
     const next = current.includes(targetId) ? current.filter((id) => id !== targetId) : [...current, targetId];
     try {
       const { data } = await api.patch(`/documents/${shareDoc.id}`, { sharedWithDepartments: next });
-      setShareDoc(data);
-      setDocuments((prev) => prev.map((d) => (d.id === data.id ? { ...d, ...data } : d)));
+      // La réponse contient les partages sous forme brute : on reconstruit la liste des départements.
+      const shared = departments.filter((dep) => next.includes(dep.id)).map((dep) => ({ id: dep.id, name: dep.name }));
+      setShareDoc({ ...shareDoc, ...data, sharedWithDepartments: shared });
+      setDocuments((prev) => prev.map((d) => (d.id === data.id ? { ...d, ...data, sharedWithDepartments: shared } : d)));
     } catch (err) {
       alert(err.response?.data?.message || "Échec de la mise à jour du partage.");
     }
@@ -449,9 +451,9 @@ export default function Documents() {
                               <FileText size={16} />
                             </span>
                             <div className="min-w-0">
-                              <button onClick={() => openDocument(doc)} className="block max-w-full truncate text-left font-medium hover:text-brand">
+                              <Link to={`/app/documents/${doc.id}`} className="block max-w-full truncate text-left font-medium hover:text-brand">
                                 {doc.title}
-                              </button>
+                              </Link>
                               <p className="truncate text-xs text-ink/45">
                                 {doc.department?.name && <span className="2xl:hidden">{doc.department.name} · </span>}
                                 {doc.reference && <span className="font-mono">{doc.reference} · </span>}

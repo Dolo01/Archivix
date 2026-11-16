@@ -192,3 +192,23 @@ model Notification {
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 }
+
+// Journal d'activité : qui a fait quoi, sur quel document, et quand.
+// Volontairement sans clé étrangère (hors organisation) : l'historique doit survivre
+// à la suppression d'un document, d'un dossier ou d'un membre.
+model ActivityLog {
+  id             String   @id @default(cuid())
+  tenantId       String
+  userId         String?
+  userName       String?
+  action         String   // archivage | consultation | modification | partage | suppression
+  documentId     String?
+  documentTitle  String?
+  departmentId   String?
+  departmentName String?
+  details        String?  // texte libre lisible (ex. « Statut : Définitif »)
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([documentId])
+}

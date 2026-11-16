@@ -5,6 +5,7 @@ const { Readable } = require("stream");
 const fs = require("fs");
 const { saveFile, pathFromUrl, temporaryUrl, localFilePath, deleteFile, kindOf } = require("../utils/storage");
 const drive = require("../utils/googleDrive");
+const { logActivity, STATUS_LABEL } = require("../utils/activity");
 
 // Renvoie (en le créant au besoin) le sous-dossier Drive du département.
 async function departmentDriveFolder(accessToken, tenant, departmentId) {
@@ -204,6 +205,8 @@ exports.upload = async (req, res) => {
       excludeUserId: req.user.id,
     }).catch(() => { });
 
+    await logActivity(req, { action: "archivage", document: doc, details: onDrive ? "Stocké dans Google Drive" : null });
+
     res.status(201).json(serialize(doc));
   } catch (err) {
     driveErrorResponse(res, err, "Erreur lors de l'archivage du document.");
@@ -226,6 +229,26 @@ exports.update = async (req, res) => {
   if (folderId !== undefined) data.folderId = folderId || null;
 
   const doc = await prisma.document.update({ where: { id: req.params.id }, data });
+
+  // Journal : on distingue le partage des autres modifications
+  if (sharedWithDepartments !== undefined && existing.sharedWithDepartments !== data.sharedWithDepartments) {
+    const depts = sharedWithDepartments.length
+      ? await prisma.department.findMany({ where: { id: { in: sharedWithDepartments } }, select: { name: true } })
+      : [];
+    await logActivity(req, {
+      action: "partage",
+      document: doc,
+      details: depts.length ? `Partagé avec ${depts.map((d) => d.name).join(", ")}` : "Partage retiré",
+    });
+  }
+  const changes = [];
+  if (title !== undefined && title !== existing.title) changes.push(`Titre : ${title}`);
+  if (status !== undefined && status !== existing.status) changes.push(`Statut : ${STATUS_LABEL[status] || status}`);
+  if (reference !== undefined && reference !== existing.reference) changes.push(`Référence : ${reference || "—"}`);
+  if (tags !== undefined && data.tags !== existing.tags) changes.push("Mots-clés modifiés");
+  if (folderId !== undefined && (folderId || null) !== existing.folderId) changes.push("Dossier modifié");
+  if (changes.length) await logActivity(req, { action: "modification", document: doc, details: changes.join(" · ") });
+
   res.json(serialize(doc));
 };
 
@@ -249,6 +272,7 @@ exports.remove = async (req, res) => {
 
   await prisma.message.deleteMany({ where: { documentId: doc.id } });
   await prisma.document.delete({ where: { id: doc.id } });
+  await logActivity(req, { action: "suppression", document: doc });
 
   // Stockage Archivix : on supprime aussi le fichier et on libère l'espace du quota.
   if (doc.storageProvider !== "google_drive") {
@@ -268,6 +292,8 @@ exports.link = async (req, res) => {
   const where = await buildScopeWhere(req);
   const doc = await prisma.document.findFirst({ where: { ...where, id: req.params.id } });
   if (!doc) return res.status(404).json({ message: "Document introuvable ou accès non autorisé." });
+
+  await logActivity(req, { action: "consultation", document: doc });
 
   // Stockage objet (Neon S3 ou Supabase) : lien temporaire signé par le service de stockage.
   if (doc.storageProvider !== "google_drive" && kindOf(doc.fileUrl) !== "local") {
@@ -301,6 +327,10 @@ exports.streamFile = async (req, res) => {
     if (!doc) return res.status(404).send("Document introuvable.");
 
     const disposition = `inline; filename*=UTF-8''${encodeURIComponent(doc.fileName)}`;
+    // Aperçu intégré dans la fiche du document : seul le site Archivix peut afficher ce fichier dans un cadre.
+    const frontend = (process.env.FRONTEND_URL || "").replace(/\/$/, "");
+    res.removeHeader("X-Frame-Options");
+    res.setHeader("Content-Security-Policy", `frame-ancestors 'self'${frontend ? " " + frontend : ""}`);
     if (doc.storageProvider !== "google_drive") {
       const full = localFilePath(doc.storageKey || pathFromUrl(doc.fileUrl) || "");
       if (!full || !fs.existsSync(full)) return res.status(404).send("Fichier introuvable sur le serveur.");
@@ -324,4 +354,16 @@ exports.streamFile = async (req, res) => {
     const status = err instanceof drive.DriveError ? err.status : 500;
     res.status(status).send(err instanceof drive.DriveError ? err.message : "Impossible d'ouvrir ce document.");
   }
+};
+// Historique d'un document (visible par toute personne qui a accès au document).
+exports.history = async (req, res) => {
+  const where = await buildScopeWhere(req);
+  const doc = await prisma.document.findFirst({ where: { ...where, id: req.params.id }, select: { id: true } });
+  if (!doc) return res.status(404).json({ message: "Document introuvable ou accès non autorisé." });
+  const entries = await prisma.activityLog.findMany({
+    where: { tenantId: req.tenantId, documentId: doc.id },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+  });
+  res.json(entries);
 };

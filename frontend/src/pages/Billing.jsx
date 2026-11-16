@@ -5,19 +5,14 @@ import { useAuth } from "../context/AuthContext.jsx";
 import Modal from "../components/Modal.jsx";
 import PageHeader from "../components/ui/PageHeader.jsx";
 import Field from "../components/ui/Field.jsx";
+import PlanCards, { BillingToggle } from "../components/PlanCards.jsx";
+import { planLabel, dureeLabel } from "../utils/plans.js";
 
 const STATUS_META = {
   en_attente: { label: "En vérification", cls: "badge-warning", icon: Clock },
   approuve: { label: "Approuvée", cls: "badge-success", icon: CheckCircle2 },
   refuse: { label: "Refusée", cls: "badge-danger", icon: XCircle },
 };
-
-const PLAN_FEATURES = [
-  "Archivage, classement et recherche",
-  "Départements, dossiers et partages",
-  "Discussion sur chaque document",
-  "Support par email",
-];
 
 const PAYMENT_LABEL = { wave: "Wave", orange_money: "Orange Money" };
 
@@ -26,6 +21,7 @@ export default function Billing() {
   const [coordonnees, setCoordonnees] = useState(null);
   const [history, setHistory] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [duree, setDuree] = useState(1);
   const [form, setForm] = useState({ moyenPaiement: "wave", numeroExpediteur: "", reference: "", capture: null });
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -65,6 +61,7 @@ export default function Billing() {
     try {
       const payload = new FormData();
       payload.append("plan", selectedPlan.id);
+      payload.append("dureeMois", String(duree));
       payload.append("moyenPaiement", form.moyenPaiement);
       payload.append("numeroExpediteur", form.numeroExpediteur);
       payload.append("reference", form.reference);
@@ -96,63 +93,40 @@ export default function Billing() {
     ? { cls: "border-brand/20 bg-brand-50 text-brand-dark", icon: Info,
         text: `Période d'essai : ${daysLeft} jour${daysLeft > 1 ? "s" : ""} restant${daysLeft > 1 ? "s" : ""}, jusqu'au ${expiry.toLocaleDateString("fr-FR")}.` }
     : { cls: "border-success/25 bg-success-light/50 text-success-dark", icon: CheckCircle2,
-        text: `Offre ${coordonnees?.offres?.find((o) => o.id === tenant?.plan)?.label || tenant?.plan} active jusqu'au ${expiry.toLocaleDateString("fr-FR")}.` };
+        text: `Offre ${planLabel(tenant?.plan)} active jusqu'au ${expiry.toLocaleDateString("fr-FR")}.` };
+  const montant = selectedPlan ? (duree === 1 ? selectedPlan.prixMensuel : selectedPlan.prixAnnuel) : null;
   const StatusIcon = statusBox.icon;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Abonnement" subtitle="Choisissez l'offre adaptée à votre organisation. Facturation annuelle." />
+      <PageHeader
+        title="Abonnement"
+        subtitle="Choisissez l'offre adaptée à votre organisation. Paiement mensuel ou annuel par Wave ou Orange Money."
+        actions={<BillingToggle value={duree} onChange={setDuree} />}
+      />
 
       <div className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm ${statusBox.cls}`}>
         <StatusIcon size={17} className="shrink-0" /> {statusBox.text}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {coordonnees?.offres?.map((p) => {
-          const current = tenant?.plan === p.id;
-          const featured = p.id === "pro";
-          return (
-            <div key={p.id} className={`card relative flex flex-col p-6 ${featured ? "border-brand ring-1 ring-brand" : ""}`}>
-              {featured && (
-                <span className="absolute -top-2.5 left-6 rounded-full bg-brand px-2.5 py-0.5 text-[11px] font-semibold text-white">
-                  Recommandé
-                </span>
-              )}
-              <h3 className="text-base font-semibold">{p.label}</h3>
-              <p className="mt-0.5 text-sm text-ink/55">{p.maxUsers ? `Jusqu'à ${p.maxUsers} utilisateurs` : "Utilisateurs illimités"}</p>
-              <p className="mt-5">
-                {p.surDevis ? (
-                  <span className="text-2xl font-semibold tracking-tight">Sur devis</span>
-                ) : (
-                  <>
-                    <span className="text-3xl font-semibold tracking-tight tabular-nums">{p.prixAnnuel.toLocaleString("fr-FR")}</span>
-                    <span className="text-sm text-ink/50"> FCFA / an</span>
-                  </>
-                )}
-              </p>
-              <ul className="mt-5 flex-1 space-y-2 text-sm text-ink/70">
-                {PLAN_FEATURES.map((f) => (
-                  <li key={f} className="flex gap-2"><Check size={16} className="mt-0.5 shrink-0 text-brand" /> {f}</li>
-                ))}
-                {p.surDevis && <li className="flex gap-2"><Check size={16} className="mt-0.5 shrink-0 text-brand" /> Accompagnement dédié</li>}
-              </ul>
-              {p.surDevis ? (
-                <a href={`mailto:${coordonnees.contactEntreprise}?subject=Offre Enterprise Archivix`} className="btn-secondary mt-6 w-full">
-                  <Mail size={15} /> Nous contacter
-                </a>
-              ) : (
-                <button
-                  onClick={() => openPlan(p)}
-                  disabled={current}
-                  className={`${featured ? "btn-primary" : "btn-secondary"} mt-6 w-full`}
-                >
-                  {current ? "Offre actuelle" : `Choisir ${p.label}`}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <PlanCards
+        duree={duree}
+        currentPlan={tenant?.plan}
+        renderAction={(p) =>
+          p.surDevis ? (
+            <a href={`mailto:${coordonnees?.contactEntreprise || ""}?subject=Offre Institution Archivix`} className="btn-secondary w-full">
+              <Mail size={15} /> Nous contacter
+            </a>
+          ) : (
+            <button onClick={() => openPlan(p)} className={`${p.recommande ? "btn-primary" : "btn-secondary"} w-full`}>
+              {tenant?.plan === p.id ? "Renouveler" : `Choisir ${p.label}`}
+            </button>
+          )
+        }
+      />
+      {coordonnees?.contactEntreprise && (
+        <p className="text-center text-xs text-ink/50">Offre Institution : écrivez-nous à <span className="font-medium text-ink/70">{coordonnees.contactEntreprise}</span></p>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="card p-6">
@@ -198,7 +172,7 @@ export default function Billing() {
                       <tr key={h.id}>
                         <td className="whitespace-nowrap text-ink/65">{new Date(h.createdAt).toLocaleDateString("fr-FR")}</td>
                         <td>
-                          <p className="font-medium capitalize">{h.plan}</p>
+                          <p className="font-medium">{planLabel(h.plan)} <span className="font-normal text-ink/50">· {dureeLabel(h.dureeMois)}</span></p>
                           <p className="font-mono text-xs text-ink/45">réf. {h.reference}</p>
                           {h.status === "refuse" && h.motifRefus && <p className="text-xs text-danger">Motif : {h.motifRefus}</p>}
                         </td>
@@ -219,9 +193,12 @@ export default function Billing() {
         open={!!selectedPlan}
         onClose={() => setSelectedPlan(null)}
         title={`Souscrire à l'offre ${selectedPlan?.label || ""}`}
-        description={selectedPlan?.prixAnnuel ? `${selectedPlan.prixAnnuel.toLocaleString("fr-FR")} FCFA pour 12 mois` : undefined}
+        description={montant ? `${montant.toLocaleString("fr-FR")} FCFA pour ${dureeLabel(duree)}` : undefined}
       >
         <form onSubmit={handleSubmitRequest} className="space-y-4">
+          <Field label="Durée">
+            <BillingToggle value={duree} onChange={setDuree} />
+          </Field>
           <Field label="Moyen de paiement">
             <div className="grid grid-cols-2 gap-2">
               {["wave", "orange_money"].map((m) => (
@@ -249,7 +226,7 @@ export default function Billing() {
                 </button>
               </div>
               <p className="mt-1 text-xs text-ink/55">
-                Bénéficiaire : {numero.nomBeneficiaire} · Montant : {selectedPlan?.prixAnnuel?.toLocaleString("fr-FR")} FCFA
+                Bénéficiaire : {numero.nomBeneficiaire} · Montant : <b>{montant?.toLocaleString("fr-FR")} FCFA</b>
               </p>
             </div>
           )}
