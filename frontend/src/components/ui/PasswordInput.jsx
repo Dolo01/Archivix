@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Lock } from "lucide-react";
 
 // Champ mot de passe avec bouton « afficher / masquer »
-export default function PasswordInput({ value, onChange, autoComplete = "current-password", minLength, required = true, placeholder, autoFocus, id }) {
+export default function PasswordInput({ value, onChange, autoComplete = "current-password", minLength, required = true, placeholder, autoFocus, id, withIcon = true }) {
   const [show, setShow] = useState(false);
   return (
     <div className="relative">
+      {withIcon && <Lock size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/35" />}
       <input
         id={id}
         type={show ? "text" : "password"}
@@ -15,7 +16,7 @@ export default function PasswordInput({ value, onChange, autoComplete = "current
         autoFocus={autoFocus}
         value={value}
         onChange={onChange}
-        className="input pr-10"
+        className={`input pr-10 ${withIcon ? "pl-10" : ""}`}
         placeholder={placeholder}
       />
       <button

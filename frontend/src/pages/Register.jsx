@@ -1,9 +1,27 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Building2, User, Mail, ArrowRight, Sparkles } from "lucide-react";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
 import AuthLayout from "../components/AuthLayout.jsx";
 import Field from "../components/ui/Field.jsx";
+import IconInput from "../components/ui/IconInput.jsx";
+import PasswordInput from "../components/ui/PasswordInput.jsx";
+
+// Indication simple de la solidité du mot de passe
+function force(pw) {
+  if (!pw) return null;
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+  if (/\d/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  if (pw.length < 8) return { n: 1, label: "Trop court (8 caractères minimum)", cls: "bg-danger", txt: "text-danger" };
+  if (score <= 2) return { n: 2, label: "Moyen", cls: "bg-warning", txt: "text-warning-dark" };
+  if (score <= 3) return { n: 3, label: "Bon", cls: "bg-brand", txt: "text-brand" };
+  return { n: 4, label: "Excellent", cls: "bg-success", txt: "text-success" };
+}
 
 export default function Register() {
   const [form, setForm] = useState({ companyName: "", fullName: "", email: "", password: "" });
@@ -11,6 +29,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const { loginSuccess } = useAuth();
   const navigate = useNavigate();
+  const f = force(form.password);
 
   function update(field) {
     return (e) => setForm({ ...form, [field]: e.target.value });
@@ -33,8 +52,9 @@ export default function Register() {
 
   return (
     <AuthLayout
-      title="Créer l'espace de votre organisation"
-      subtitle="14 jours d'essai gratuit, sans engagement ni carte bancaire."
+      badge={<><Sparkles size={13} /> 14 jours gratuits · sans engagement</>}
+      title="Créez l'espace de votre organisation"
+      subtitle="En 2 minutes, sans carte bancaire. Vous serez l'administrateur de cet espace."
       footer={
         <>
           Déjà un compte ?{" "}
@@ -44,25 +64,36 @@ export default function Register() {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Nom de l'organisation">
-          <input required value={form.companyName} onChange={update("companyName")} className="input" placeholder="Cabinet, entreprise ou administration" />
+          <IconInput icon={Building2} required value={form.companyName} onChange={update("companyName")} placeholder="Cabinet, entreprise ou administration" />
         </Field>
         <Field label="Votre nom complet">
-          <input required autoComplete="name" value={form.fullName} onChange={update("fullName")} className="input" placeholder="Prénom Nom" />
-        </Field>
-        <Field label="Email professionnel">
-          <input type="email" required autoComplete="email" value={form.email} onChange={update("email")} className="input" placeholder="vous@organisation.com" />
-        </Field>
-        <Field label="Mot de passe" hint="8 caractères minimum.">
-          <input type="password" required minLength={8} autoComplete="new-password" value={form.password} onChange={update("password")} className="input" />
-        </Field>
+            <IconInput icon={User} required autoComplete="name" value={form.fullName} onChange={update("fullName")} placeholder="Prénom Nom" />
+          </Field>
+          <Field label="Email professionnel">
+            <IconInput icon={Mail} type="email" required autoComplete="email" value={form.email} onChange={update("email")} placeholder="vous@organisation.com" />
+          </Field>
+        <div>
+          <label className="label">Mot de passe</label>
+          <PasswordInput value={form.password} onChange={update("password")} autoComplete="new-password" minLength={8} placeholder="8 caractères minimum" />
+          {f && (
+            <div className="mt-2 flex items-center gap-3">
+              <div className="flex flex-1 gap-1">
+                {[1, 2, 3, 4].map((i) => (
+                  <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= f.n ? f.cls : "bg-ink/10"}`} />
+                ))}
+              </div>
+              <span className={`text-xs font-medium ${f.txt}`}>{f.label}</span>
+            </div>
+          )}
+        </div>
 
         {error && <p className="alert-error">{error}</p>}
 
-        <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
-          {loading ? "Création…" : "Démarrer l'essai gratuit"}
+        <button type="submit" disabled={loading} className="btn-primary group w-full py-3 text-[15px]">
+          {loading ? "Création de votre espace…" : (<>Démarrer l'essai gratuit <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" /></>)}
         </button>
-        <p className="text-center text-xs text-ink/45">
-          Vous serez l'administrateur de cet espace. En créant un compte, vous acceptez notre{" "}
+        <p className="text-center text-xs leading-relaxed text-ink/45">
+          En créant un compte, vous acceptez notre{" "}
           <Link to="/confidentialite" className="underline hover:text-ink">politique de confidentialité</Link>.
         </p>
       </form>
