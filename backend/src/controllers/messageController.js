@@ -1,4 +1,5 @@
 const prisma = require("../config/prisma");
+const { notifyUsers } = require("../utils/notify");
 
 async function assertAccess(req, documentId) {
   const doc = await prisma.document.findFirst({ where: { id: documentId, tenantId: req.tenantId } });
@@ -49,6 +50,21 @@ exports.create = async (req, res) => {
 
   const io = req.app.get("io");
   io?.to(`document:${req.params.documentId}`).emit("nouveau_message", message);
+
+  // Notifie l'auteur du document et les participants de la discussion (hors expéditeur)
+  prisma.message
+    .findMany({ where: { documentId: doc.id }, select: { authorId: true }, distinct: ["authorId"] })
+    .then((rows) =>
+      notifyUsers(req.app, {
+        tenantId: req.tenantId,
+        userIds: [doc.uploadedById, ...rows.map((r) => r.authorId)],
+        type: "nouveau_message",
+        message: `${req.user.fullName} sur « ${doc.title} » : ${message.content.slice(0, 120)}`,
+        link: `/app/documents/${doc.id}?onglet=discussion`,
+        excludeUserId: req.user.id,
+      })
+    )
+    .catch(() => {});
 
   res.status(201).json(message);
 };

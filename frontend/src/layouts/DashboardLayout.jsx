@@ -21,6 +21,7 @@ import api from "../api/client";
 import { getSocket } from "../api/socket";
 import Logo from "../components/Logo.jsx";
 import Avatar from "../components/ui/Avatar.jsx";
+import PushToggle from "../components/PushToggle.jsx";
 
 const ROLE_LABEL = { admin: "Administrateur", gestionnaire: "Gestionnaire", lecteur: "Lecteur" };
 
@@ -240,18 +241,27 @@ export default function DashboardLayout() {
                   <div className="border-b border-line px-4 py-3">
                     <p className="text-sm font-semibold">Notifications</p>
                   </div>
+                  <PushToggle />
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.length === 0 && (
                       <p className="px-4 py-8 text-center text-sm text-ink/50">Aucune notification pour le moment.</p>
                     )}
                     {notifications.map((n) => (
-                      <div key={n.id} className="flex gap-3 border-b border-line px-4 py-3 last:border-0">
+                      <button
+                        key={n.id}
+                        type="button"
+                        onClick={() => {
+                          setNotifOpen(false);
+                          if (n.link) navigate(n.link);
+                        }}
+                        className="flex w-full gap-3 border-b border-line px-4 py-3 text-left last:border-0 hover:bg-paper-dim/60"
+                      >
                         <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.isRead ? "bg-transparent" : "bg-brand"}`} />
-                        <div className="min-w-0">
-                          <p className="text-sm text-ink/80">{n.message}</p>
-                          <p className="mt-0.5 text-xs text-ink/45">{new Date(n.createdAt).toLocaleString("fr-FR")}</p>
-                        </div>
-                      </div>
+                        <span className="min-w-0">
+                          <span className="block text-sm text-ink/80">{n.message}</span>
+                          <span className="mt-0.5 block text-xs text-ink/45">{new Date(n.createdAt).toLocaleString("fr-FR")}</span>
+                        </span>
+                      </button>
                     ))}
                   </div>
                 </div>

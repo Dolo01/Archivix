@@ -1,5 +1,5 @@
 const prisma = require("../config/prisma");
-const { notifyDepartmentMembers } = require("../utils/notify");
+const { notifyUsers, membersOfDepartments, adminsOf } = require("../utils/notify");
 const jwt = require("jsonwebtoken");
 const { Readable } = require("stream");
 const fs = require("fs");
@@ -196,14 +196,19 @@ exports.upload = async (req, res) => {
       });
     }
 
-    notifyDepartmentMembers(req.app, {
-      tenantId: req.tenantId,
-      departmentId,
-      type: "document_ajoute",
-      message: `${req.user.fullName} a archivé « ${doc.title} » dans votre département.`,
-      link: "/app/documents",
-      excludeUserId: req.user.id,
-    }).catch(() => { });
+    // Membres du département + administrateurs (hors auteur)
+    Promise.all([membersOfDepartments(req.tenantId, [departmentId]), adminsOf(req.tenantId)])
+      .then(([members, admins]) =>
+        notifyUsers(req.app, {
+          tenantId: req.tenantId,
+          userIds: [...members, ...admins],
+          type: "document_ajoute",
+          message: `${req.user.fullName} a archivé « ${doc.title} ».`,
+          link: `/app/documents/${doc.id}`,
+          excludeUserId: req.user.id,
+        })
+      )
+      .catch(() => {});
 
     await logActivity(req, { action: "archivage", document: doc, details: onDrive ? "Stocké dans Google Drive" : null });
 
@@ -232,6 +237,21 @@ exports.update = async (req, res) => {
 
   // Journal : on distingue le partage des autres modifications
   if (sharedWithDepartments !== undefined && existing.sharedWithDepartments !== data.sharedWithDepartments) {
+    // Notifie seulement les départements nouvellement ajoutés au partage
+    const before = JSON.parse(existing.sharedWithDepartments || "[]");
+    const added = sharedWithDepartments.filter((id) => !before.includes(id));
+    membersOfDepartments(req.tenantId, added)
+      .then((ids) =>
+        notifyUsers(req.app, {
+          tenantId: req.tenantId,
+          userIds: ids,
+          type: "document_partage",
+          message: `${req.user.fullName} a partagé « ${doc.title} » avec votre département.`,
+          link: `/app/documents/${doc.id}`,
+          excludeUserId: req.user.id,
+        })
+      )
+      .catch(() => {});
     const depts = sharedWithDepartments.length
       ? await prisma.department.findMany({ where: { id: { in: sharedWithDepartments } }, select: { name: true } })
       : [];

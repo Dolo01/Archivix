@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, ExternalLink, Share2, Pencil, Trash2, FileText, Image as ImageIcon, FileSpreadsheet,
   History, MessageSquare, Info,
@@ -53,7 +53,9 @@ export default function DocumentDetail() {
   const [previewError, setPreviewError] = useState("");
   const [history, setHistory] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [tab, setTab] = useState("historique");
+  const [searchParams] = useSearchParams();
+  // Une notification de message ouvre directement la discussion
+  const [tab, setTab] = useState(searchParams.get("onglet") === "discussion" ? "discussion" : "historique");
 
   const [editOpen, setEditOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);

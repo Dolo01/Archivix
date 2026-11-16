@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "../api/client";
+import { closeSocket } from "../api/socket";
 
 const AuthContext = createContext(null);
 
@@ -40,6 +41,7 @@ export function AuthProvider({ children }) {
 
   function logout() {
     localStorage.removeItem("archivix_token");
+    closeSocket();
     setUser(null);
     setTenant(null);
   }

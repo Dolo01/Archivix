@@ -1,5 +1,6 @@
 const prisma = require("../config/prisma");
 const { logActivity } = require("../utils/activity");
+const { notifyUsers, membersOfDepartments } = require("../utils/notify");
 
 function canSeeFolder(req, folder) {
   if (req.superAdmin) return true;
@@ -82,6 +83,20 @@ exports.updateSharing = async (req, res) => {
   const depts = (sharedWithDepartments || []).length
     ? await prisma.department.findMany({ where: { id: { in: sharedWithDepartments } }, select: { name: true } })
     : [];
+  const before = JSON.parse(folder.sharedWithDepartments || "[]");
+  const added = (sharedWithDepartments || []).filter((id) => !before.includes(id));
+  membersOfDepartments(req.tenantId, added)
+    .then((ids) =>
+      notifyUsers(req.app, {
+        tenantId: req.tenantId,
+        userIds: ids,
+        type: "dossier_partage",
+        message: `${req.user.fullName} a partagé le dossier « ${folder.name} » avec votre département.`,
+        link: "/app/documents",
+        excludeUserId: req.user.id,
+      })
+    )
+    .catch(() => {});
   await logActivity(req, {
     action: "partage",
     departmentId: folder.departmentId,

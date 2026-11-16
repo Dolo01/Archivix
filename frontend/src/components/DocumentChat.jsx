@@ -10,7 +10,14 @@ export default function DocumentChat({ documentId }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
   const bottomRef = useRef(null);
+
+  // Ajoute un message sans doublon (il peut arriver à la fois par la réponse et par le temps réel)
+  function addMessage(msg) {
+    setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+  }
 
   useEffect(() => {
     if (!documentId) return;
@@ -22,34 +29,42 @@ export default function DocumentChat({ documentId }) {
       .finally(() => setLoading(false));
 
     const socket = getSocket();
-    socket.emit("rejoindre_document", documentId);
+    const join = () => socket.emit("rejoindre_document", documentId);
+    join();
+    // Après une coupure réseau, Socket.io se reconnecte mais oublie les salons : on s'y réinscrit
+    socket.on("connect", join);
 
     function onNewMessage(msg) {
-      if (msg.document === documentId || msg.document?.id === documentId) {
-        setMessages((prev) => [...prev, msg]);
-      }
+      if (msg.documentId === documentId) addMessage(msg);
     }
     socket.on("nouveau_message", onNewMessage);
 
     return () => {
       socket.emit("quitter_document", documentId);
+      socket.off("connect", join);
       socket.off("nouveau_message", onNewMessage);
     };
   }, [documentId]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages]);
 
   async function sendMessage(e) {
     e.preventDefault();
-    if (!text.trim()) return;
-    const content = text;
+    const content = text.trim();
+    if (!content || sending) return;
+    setSending(true);
+    setError("");
     setText("");
     try {
-      await api.post(`/messages/${documentId}`, { content });
-    } catch {
+      const { data } = await api.post(`/messages/${documentId}`, { content });
+      addMessage(data);
+    } catch (err) {
       setText(content);
+      setError(err.response?.data?.message || "Message non envoyé. Vérifiez votre connexion et réessayez.");
+    } finally {
+      setSending(false);
     }
   }
 
@@ -89,6 +104,7 @@ export default function DocumentChat({ documentId }) {
         <div ref={bottomRef} />
       </div>
 
+      {error && <p className="alert-error mt-3">{error}</p>}
       <form onSubmit={sendMessage} className="mt-3 flex items-center gap-2 border-t border-line pt-3">
         <input
           value={text}
@@ -96,7 +112,7 @@ export default function DocumentChat({ documentId }) {
           placeholder="Écrire un message…"
           className="input flex-1"
         />
-        <button type="submit" disabled={!text.trim()} className="btn-primary px-3" aria-label="Envoyer">
+        <button type="submit" disabled={!text.trim() || sending} className="btn-primary px-3" aria-label="Envoyer">
           <Send size={16} />
         </button>
       </form>
