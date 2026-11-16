@@ -1,6 +1,7 @@
 const prisma = require("../config/prisma");
 const { PLANS, OFFRES_DEMANDABLES, OFFRES_AFFICHEES, montantPour } = require("../utils/plans");
 const { saveFile, displayUrl } = require("../utils/storage");
+const mailer = require("../utils/mailer");
 
 // Coordonnées de paiement affichées à l'entreprise (comptes de l'exploitant de la plateforme)
 exports.coordonnees = (req, res) => {
@@ -70,6 +71,25 @@ exports.create = async (req, res) => {
         captureUrl,
       },
     });
+
+    // Prévient le ou les super-administrateurs qu'un dépôt est à vérifier
+    prisma.superAdmin
+      .findMany({ select: { email: true, fullName: true } })
+      .then(async (admins) => {
+        const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId }, select: { name: true } });
+        return mailer.sendMail(
+          mailer.newRequestEmail({
+            to: admins.map((a) => ({ email: a.email, name: a.fullName })),
+            orgName: tenant?.name || "Une organisation",
+            planLabel: PLANS[plan].label,
+            montant: `${montant.toLocaleString("fr-FR")} FCFA`,
+            duree: dureeMois === 1 ? "1 mois" : "12 mois",
+            moyen: moyenPaiement === "wave" ? "Wave" : "Orange Money",
+            reference,
+          })
+        );
+      })
+      .catch(() => {});
 
     res.status(201).json({ request, message: "Demande envoyée. Elle sera examinée par l'administrateur de la plateforme." });
   } catch (err) {

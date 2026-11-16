@@ -4,6 +4,10 @@ const bcrypt = require("bcryptjs");
 const { requireAuth, requireRole } = require("../middleware/auth");
 const prisma = require("../config/prisma");
 const { PLANS } = require("../utils/plans");
+const crypto = require("crypto");
+const mailer = require("../utils/mailer");
+const { createToken, validatePassword } = require("../utils/passwordTokens");
+const { requireActiveSubscription } = require("../middleware/subscription");
 
 router.use(requireAuth);
 
@@ -15,7 +19,7 @@ router.get("/", async (req, res) => {
   res.json(users.map(({ passwordHash, ...u }) => u));
 });
 
-router.post("/", requireRole("admin"), async (req, res) => {
+router.post("/", requireRole("admin"), requireActiveSubscription, async (req, res) => {
   try {
     const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
     const plan = PLANS[tenant.plan] || PLANS.essai;
@@ -33,8 +37,14 @@ router.post("/", requireRole("admin"), async (req, res) => {
     const email = String(req.body.email || "").trim().toLowerCase();
     if (!fullName?.trim()) return res.status(400).json({ message: "Indiquez le nom complet du membre." });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: "Adresse e-mail invalide." });
-    if (!password || String(password).length < 6) {
-      return res.status(400).json({ message: "Le mot de passe temporaire doit contenir au moins 6 caractères." });
+    // Sans mot de passe : invitation par e-mail (le membre choisit le sien). Sinon : mot de passe temporaire.
+    const byInvitation = !password;
+    if (byInvitation && !mailer.configured) {
+      return res.status(400).json({ message: "Indiquez un mot de passe temporaire : l'envoi d'invitations par e-mail n'est pas encore activé." });
+    }
+    if (!byInvitation) {
+      const pwdError = validatePassword(password);
+      if (pwdError) return res.status(400).json({ message: pwdError.replace("Le mot de passe", "Le mot de passe temporaire") });
     }
     if (role && !["admin", "gestionnaire", "lecteur"].includes(role)) {
       return res.status(400).json({ message: "Rôle invalide." });
@@ -53,7 +63,7 @@ router.post("/", requireRole("admin"), async (req, res) => {
       if (!dept) return res.status(400).json({ message: "Ce département n'existe plus. Rechargez la page et réessayez." });
     }
 
-    const passwordHash = await bcrypt.hash(String(password), 10);
+    const passwordHash = await bcrypt.hash(byInvitation ? crypto.randomBytes(24).toString("base64url") : String(password), 10);
     const user = await prisma.user.create({
       data: {
         tenantId: req.tenantId,
@@ -62,11 +72,26 @@ router.post("/", requireRole("admin"), async (req, res) => {
         passwordHash,
         role: role || "lecteur",
         departmentId: departmentId || null,
+        mustChangePassword: !byInvitation,
       },
       include: { department: { select: { id: true, name: true } } },
     });
+    // E-mail d'invitation (lien valable 72 h pour choisir son mot de passe)
+    // (seulement si l'administrateur n'a pas choisi de mot de passe temporaire)
+    let invitationSent = false;
+    if (byInvitation) {
+      const raw = await createToken(user.id, "invitation");
+      invitationSent = await mailer.sendMail(
+        mailer.invitationEmail({
+          user,
+          orgName: tenant.name,
+          inviterName: req.user.fullName,
+          setupUrl: `${mailer.FRONTEND_URL()}/reinitialiser?jeton=${raw}`,
+        })
+      );
+    }
     const { passwordHash: _, ...safeUser } = user;
-    res.status(201).json(safeUser);
+    res.status(201).json({ ...safeUser, invitationSent });
   } catch (err) {
     if (err.code === "P2002") {
       return res.status(409).json({ message: "Un membre utilise déjà cette adresse e-mail dans votre organisation." });
@@ -76,7 +101,7 @@ router.post("/", requireRole("admin"), async (req, res) => {
   }
 });
 
-router.patch("/:id", requireRole("admin"), async (req, res) => {
+router.patch("/:id", requireRole("admin"), requireActiveSubscription, async (req, res) => {
   try {
     const { fullName, role, isActive, departmentId } = req.body;
     const data = {};
@@ -101,6 +126,34 @@ router.patch("/:id", requireRole("admin"), async (req, res) => {
 });
 
 // Réservé admin : retirer définitivement un membre de l'entreprise
+// Renvoie un lien d'invitation (e-mail non reçu, lien expiré, ou mot de passe oublié par un membre).
+// Les anciens liens encore valides sont annulés.
+router.post("/:id/invitation", requireRole("admin"), requireActiveSubscription, async (req, res) => {
+  try {
+    if (!mailer.configured) {
+      return res.status(400).json({ message: "L'envoi d'e-mails n'est pas encore activé : attribuez un mot de passe temporaire." });
+    }
+    const member = await prisma.user.findFirst({ where: { id: req.params.id, tenantId: req.tenantId } });
+    if (!member) return res.status(404).json({ message: "Membre introuvable." });
+    if (!member.isActive) return res.status(400).json({ message: "Réactivez d'abord ce compte." });
+    await prisma.passwordResetToken.updateMany({ where: { userId: member.id, usedAt: null }, data: { usedAt: new Date() } });
+    const raw = await createToken(member.id, "invitation");
+    const sent = await mailer.sendMail(
+      mailer.invitationEmail({
+        user: member,
+        orgName: req.tenant.name,
+        inviterName: req.user.fullName,
+        setupUrl: `${mailer.FRONTEND_URL()}/reinitialiser?jeton=${raw}`,
+      })
+    );
+    if (!sent) return res.status(502).json({ message: "L'e-mail n'a pas pu être envoyé. Réessayez dans quelques minutes." });
+    res.json({ message: `Lien envoyé à ${member.email}. Il est valable 3 jours.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Impossible d'envoyer l'invitation." });
+  }
+});
+
 router.delete("/:id", requireRole("admin"), async (req, res) => {
   try {
     const target = await prisma.user.findFirst({ where: { id: req.params.id, tenantId: req.tenantId } });

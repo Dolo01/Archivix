@@ -15,6 +15,8 @@ import {
   ChevronsUpDown,
   Settings,
   History,
+  KeyRound,
+  Lock,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import api from "../api/client";
@@ -22,6 +24,8 @@ import { getSocket } from "../api/socket";
 import Logo from "../components/Logo.jsx";
 import Avatar from "../components/ui/Avatar.jsx";
 import PushToggle from "../components/PushToggle.jsx";
+import Modal from "../components/Modal.jsx";
+import ChangePasswordForm from "../components/ChangePasswordForm.jsx";
 
 const ROLE_LABEL = { admin: "Administrateur", gestionnaire: "Gestionnaire", lecteur: "Lecteur" };
 
@@ -77,6 +81,18 @@ export default function DashboardLayout() {
   const [notifications, setNotifications] = useState([]);
   const [unread, setUnread] = useState(0);
   const [search, setSearch] = useState("");
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordDone, setPasswordDone] = useState(false);
+  const [, forceRender] = useState(0);
+
+  // Lecture seule : abonnement expiré (vérifié à l'affichage, et dès qu'une action est refusée par le serveur)
+  const expiry = tenant?.subscriptionExpiresAt ? new Date(tenant.subscriptionExpiresAt) : null;
+  const readOnly = Boolean(expiry && expiry < new Date());
+  useEffect(() => {
+    const onReadOnly = () => forceRender((n) => n + 1);
+    window.addEventListener("archivix:lecture-seule", onReadOnly);
+    return () => window.removeEventListener("archivix:lecture-seule", onReadOnly);
+  }, []);
 
   const notifRef = useRef(null);
   const menuRef = useRef(null);
@@ -175,6 +191,16 @@ export default function DashboardLayout() {
           {menuOpen && (
             <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-line bg-white p-1.5 shadow-pop">
               <p className="truncate px-2.5 py-1.5 text-xs text-ink/50">{user?.email}</p>
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  setPasswordDone(false);
+                  setPasswordOpen(true);
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-ink/80 hover:bg-ink/[0.04]"
+              >
+                <KeyRound size={15} /> Changer mon mot de passe
+              </button>
               <button
                 onClick={logout}
                 className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-danger hover:bg-danger-light"
@@ -275,12 +301,48 @@ export default function DashboardLayout() {
           </div>
         </header>
 
+        {readOnly && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-danger/20 bg-danger-light/60 px-4 py-2.5 text-sm text-danger-dark sm:px-6 lg:px-8">
+            <Lock size={16} className="shrink-0" />
+            <span className="min-w-0 flex-1">
+              <strong>Lecture seule.</strong>{" "}
+              {tenant?.plan === "essai" ? "La période d'essai" : "L'abonnement"} a pris fin le {expiry.toLocaleDateString("fr-FR")}.
+              Les documents restent consultables ; l'ajout et la modification sont suspendus
+              {isAdmin ? " jusqu'au renouvellement." : ". Prévenez votre administrateur."}
+            </span>
+            {isAdmin && location.pathname !== "/app/facturation" && (
+              <button onClick={() => navigate("/app/facturation")} className="btn-primary px-3 py-1.5 text-xs">
+                Choisir une offre
+              </button>
+            )}
+          </div>
+        )}
+
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div className="animate-in mx-auto max-w-7xl">
             <Outlet />
           </div>
         </main>
       </div>
+
+      <Modal
+        open={passwordOpen}
+        onClose={() => setPasswordOpen(false)}
+        title="Changer mon mot de passe"
+        description={passwordDone ? undefined : "Choisissez un mot de passe que vous seul connaissez."}
+        size="sm"
+      >
+        {passwordDone ? (
+          <div className="space-y-4">
+            <p className="alert-success">Mot de passe changé. Vos autres appareils ont été déconnectés.</p>
+            <div className="flex justify-end">
+              <button onClick={() => setPasswordOpen(false)} className="btn-primary">Fermer</button>
+            </div>
+          </div>
+        ) : (
+          <ChangePasswordForm onDone={() => setPasswordDone(true)} onCancel={() => setPasswordOpen(false)} submitLabel="Enregistrer" />
+        )}
+      </Modal>
     </div>
   );
 }

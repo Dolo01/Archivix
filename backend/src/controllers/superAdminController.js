@@ -4,6 +4,7 @@ const prisma = require("../config/prisma");
 const { notifyTenantAdmins } = require("../utils/notify");
 const { PLANS } = require("../utils/plans");
 const { displayUrl } = require("../utils/storage");
+const mailer = require("../utils/mailer");
 
 exports.login = async (req, res) => {
   try {
@@ -71,6 +72,8 @@ exports.approveRequest = async (req, res) => {
         subscriptionExpiresAt: base,
         isActive: true,
         plan: request.plan,
+        // Nouveau cycle : les rappels de fin d'abonnement pourront être renvoyés
+        expiryReminderSentAt: null,
         // Le quota suit l'offre, sans jamais réduire un quota déjà plus élevé
         storageQuotaMb: Math.max(tenant.storageQuotaMb, PLANS[request.plan]?.quotaMb || tenant.storageQuotaMb),
       },
@@ -86,6 +89,19 @@ exports.approveRequest = async (req, res) => {
       message: `Votre demande d'abonnement ${PLANS[request.plan]?.label || request.plan} a été approuvée. Abonnement actif jusqu'au ${base.toLocaleDateString("fr-FR")}.`,
       link: "/app/facturation",
     });
+
+    const admins = await prisma.user.findMany({ where: { tenantId: tenant.id, role: "admin", isActive: true } });
+    mailer
+      .sendMail(
+        mailer.subscriptionDecisionEmail({
+          admins,
+          orgName: tenant.name,
+          approved: true,
+          planLabel: PLANS[request.plan]?.label || request.plan,
+          until: base.toLocaleDateString("fr-FR", { timeZone: "Africa/Bamako" }),
+        })
+      )
+      .catch(() => {});
 
     res.json({ message: "Demande approuvée, abonnement activé." });
   } catch (err) {
@@ -111,6 +127,14 @@ exports.rejectRequest = async (req, res) => {
       message: `Votre demande d'abonnement a été refusée. Motif : ${motif || "non précisé"}.`,
       link: "/app/facturation",
     });
+
+    const [tenant, admins] = await Promise.all([
+      prisma.tenant.findUnique({ where: { id: request.tenantId }, select: { name: true } }),
+      prisma.user.findMany({ where: { tenantId: request.tenantId, role: "admin", isActive: true } }),
+    ]);
+    mailer
+      .sendMail(mailer.subscriptionDecisionEmail({ admins, orgName: tenant?.name || "", approved: false, motif: motif || "Non conforme" }))
+      .catch(() => {});
 
     res.json({ message: "Demande refusée." });
   } catch (err) {

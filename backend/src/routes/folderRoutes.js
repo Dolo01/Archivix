@@ -1,9 +1,12 @@
 const express = require("express");
+const { requireActiveSubscription } = require("../middleware/subscription");
 const router = express.Router();
 const { requireAuth } = require("../middleware/auth");
 const folderController = require("../controllers/folderController");
 
 router.use(requireAuth);
+// Abonnement expiré : consultation possible, modifications suspendues (lecture seule)
+router.use(requireActiveSubscription);
 
 router.get("/", folderController.list);
 router.post("/", folderController.create);

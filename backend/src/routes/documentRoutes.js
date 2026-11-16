@@ -1,4 +1,5 @@
 const express = require("express");
+const { requireActiveSubscription } = require("../middleware/subscription");
 const router = express.Router();
 const { requireAuth, requireRole } = require("../middleware/auth");
 const upload = require("../middleware/upload");
@@ -8,6 +9,8 @@ const documentController = require("../controllers/documentController");
 router.get("/:id/fichier", documentController.streamFile);
 
 router.use(requireAuth);
+// Abonnement expiré : consultation possible, modifications suspendues (lecture seule)
+router.use(requireActiveSubscription);
 
 router.get("/", documentController.list);
 router.get("/:id", documentController.getOne);

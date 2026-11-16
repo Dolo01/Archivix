@@ -1,9 +1,12 @@
 const express = require("express");
+const { requireActiveSubscription } = require("../middleware/subscription");
 const router = express.Router();
 const { requireAuth, requireRole } = require("../middleware/auth");
 const departmentController = require("../controllers/departmentController");
 
 router.use(requireAuth);
+// Abonnement expiré : consultation possible, modifications suspendues (lecture seule)
+router.use(requireActiveSubscription);
 
 router.get("/", departmentController.list);
 router.post("/", requireRole("admin"), departmentController.create);

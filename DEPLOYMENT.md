@@ -134,6 +134,37 @@ Connecte-toi en administrateur d'une organisation → **Paramètres** → **Conn
    - ordinateur (Chrome, Edge, Firefox, Safari) et Android : directement ;
    - iPhone / iPad (iOS 16.4 ou plus) : d'abord **Partager → Sur l'écran d'accueil**, puis ouvrir Archivix depuis l'icône et activer.
 
+## 8. E-mails automatiques (Brevo)
+
+Archivix envoie des e-mails pour : l'invitation d'un membre (il choisit lui-même son mot de passe),
+« mot de passe oublié », le rappel 3 jours avant la fin de l'abonnement puis à l'expiration, la
+validation ou le refus d'une demande d'abonnement, et l'alerte au super-admin à chaque nouvelle demande.
+
+Render bloque les ports SMTP sur le plan gratuit : Archivix passe donc par l'**API HTTP de Brevo**
+(plan gratuit : 300 e-mails par jour, accès API inclus).
+
+1. Créez un compte gratuit sur brevo.com.
+2. **Expéditeurs** : ajoutez et validez l'adresse d'envoi (par défaut `supportarchivix@gmail.com`).
+   Brevo refuse les envois depuis une adresse non validée. À terme, envoyez depuis une adresse de
+   votre propre nom de domaine (ex. `no-reply@archivix.ml`) authentifiée par SPF/DKIM : les e-mails
+   arrivent beaucoup moins souvent dans les indésirables.
+3. **Clés API** : créez une clé API (pas une clé SMTP).
+4. Render → backend → Environment :
+   | Variable | Valeur |
+   |---|---|
+   | `BREVO_API_KEY` | la clé API |
+   | `MAIL_FROM_EMAIL` | l'adresse validée à l'étape 2 |
+   | `MAIL_FROM_NAME` | `Archivix` |
+   | `FRONTEND_URL` | l'adresse du site (déjà réglée à l'étape 4) : elle sert aux liens des e-mails |
+5. Testez « Mot de passe oublié » depuis la page de connexion.
+
+Sans clé Brevo, tout fonctionne sauf les e-mails : l'administrateur doit alors donner un mot de passe
+temporaire à chaque nouveau membre, qui le change à sa première connexion.
+
+**Fin d'abonnement** : l'organisation passe en **lecture seule** (consultation et téléchargement
+toujours possibles ; ajout, modification, partage et invitations suspendus) jusqu'à la validation
+d'un paiement par le super-admin.
+
 ## Limites du plan gratuit (à connaître)
 
 - Render free (Web Service) : mise en veille après inactivité (cold start ~30-60s), 750h/mois gratuites par workspace.

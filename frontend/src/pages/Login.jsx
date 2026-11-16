@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import api from "../api/client";
@@ -10,7 +10,22 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  // Message laissé par une déconnexion forcée (ex. mot de passe changé sur un autre appareil)
+  // (effacé seulement en quittant la page : un rechargement juste après la déconnexion le conserve)
+  const [error, setError] = useState(() => {
+    try {
+      return sessionStorage.getItem("archivix_logout_reason") || "";
+    } catch {
+      return "";
+    }
+  });
+  useEffect(() => () => {
+    try {
+      sessionStorage.removeItem("archivix_logout_reason");
+    } catch {
+      /* sans gravité */
+    }
+  }, []);
   const [loading, setLoading] = useState(false);
   const { loginSuccess } = useAuth();
   const navigate = useNavigate();
@@ -18,6 +33,11 @@ export default function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    try {
+      sessionStorage.removeItem("archivix_logout_reason");
+    } catch {
+      /* sans gravité */
+    }
     setLoading(true);
     try {
       const { data } = await api.post("/auth/login", { email, password });
@@ -45,7 +65,11 @@ export default function Login() {
         <Field label="Email professionnel">
           <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input" placeholder="vous@organisation.com" />
         </Field>
-        <Field label="Mot de passe">
+        <div>
+          <div className="flex items-center justify-between">
+            <label className="label">Mot de passe</label>
+            <Link to="/mot-de-passe-oublie" className="mb-1.5 text-xs font-medium text-brand hover:text-brand-dark">Mot de passe oublié ?</Link>
+          </div>
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
@@ -65,7 +89,7 @@ export default function Login() {
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-        </Field>
+        </div>
 
         {error && <p className="alert-error">{error}</p>}
 
