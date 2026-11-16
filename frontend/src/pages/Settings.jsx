@@ -147,9 +147,14 @@ export default function Settings() {
                 </p>
               )}
               {status && !status.configured && (
-                <p className="mt-4 rounded-lg border border-line bg-paper-dim/70 px-3.5 py-2.5 text-sm text-ink/60">
-                  Cette option n'est pas encore activée sur la plateforme. Contactez le support Archivix.
-                </p>
+                <div className="mt-4 rounded-lg border border-line bg-paper-dim/70 px-3.5 py-2.5 text-sm text-ink/60">
+                  <p>Cette option n'est pas encore activée sur la plateforme. Contactez le support Archivix.</p>
+                  {status.missingSettings?.length > 0 && (
+                    <p className="mt-1.5 text-xs text-ink/45">
+                      Réglage(s) serveur manquant(s) : <span className="font-mono">{status.missingSettings.join(", ")}</span>
+                    </p>
+                  )}
+                </div>
               )}
               {!connected && status?.driveDocuments > 0 && (
                 <p className="mt-4 rounded-lg border border-warning/25 bg-warning-light/50 px-3.5 py-2.5 text-sm text-warning-dark">

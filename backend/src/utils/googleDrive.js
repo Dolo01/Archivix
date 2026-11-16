@@ -21,10 +21,18 @@ class DriveError extends Error {
   }
 }
 
+// Noms des réglages manquants ou invalides (jamais leurs valeurs), pour aider l'administrateur.
+function missingSettings() {
+  const missing = [];
+  if (!process.env.GOOGLE_CLIENT_ID?.trim()) missing.push("GOOGLE_CLIENT_ID");
+  if (!process.env.GOOGLE_CLIENT_SECRET?.trim()) missing.push("GOOGLE_CLIENT_SECRET");
+  if (!process.env.GOOGLE_REDIRECT_URI?.trim()) missing.push("GOOGLE_REDIRECT_URI");
+  if (!hasKey()) missing.push("GOOGLE_TOKEN_ENCRYPTION_KEY");
+  return missing;
+}
+
 function isConfigured() {
-  return Boolean(
-    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REDIRECT_URI && hasKey()
-  );
+  return missingSettings().length === 0;
 }
 
 function buildAuthUrl(state) {
@@ -204,6 +212,7 @@ async function revoke(refreshTokenEncrypted) {
 module.exports = {
   DriveError,
   isConfigured,
+  missingSettings,
   buildAuthUrl,
   exchangeCode,
   getUserEmail,
