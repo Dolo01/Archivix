@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, ArrowRight } from "lucide-react";
+import { Mail } from "lucide-react";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
 import AuthLayout from "../components/AuthLayout.jsx";
@@ -53,12 +53,12 @@ export default function Login() {
 
   return (
     <AuthLayout
-      title="Bon retour 👋"
-      subtitle="Connectez-vous à l'espace documentaire de votre organisation."
+      title="Connexion à votre espace"
+      subtitle="Identifiez-vous pour accéder aux archives de votre organisation."
       footer={
         <>
-          Pas encore de compte ?{" "}
-          <Link to="/inscription" className="font-semibold text-brand hover:text-brand-dark">Essayer gratuitement 14 jours</Link>
+          Votre organisation n'a pas encore de compte ?{" "}
+          <Link to="/inscription" className="font-semibold text-brand hover:text-brand-dark">Créer un espace</Link>
         </>
       }
     >
@@ -76,8 +76,8 @@ export default function Login() {
 
         {error && <p className="alert-error">{error}</p>}
 
-        <button type="submit" disabled={loading} className="btn-primary group w-full py-3 text-[15px]">
-          {loading ? "Connexion…" : (<>Se connecter <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" /></>)}
+        <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-[15px]">
+          {loading ? "Connexion…" : "Se connecter"}
         </button>
       </form>
     </AuthLayout>

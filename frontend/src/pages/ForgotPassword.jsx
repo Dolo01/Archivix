@@ -29,7 +29,7 @@ export default function ForgotPassword() {
     <AuthLayout
       title="Mot de passe oublié"
       subtitle="Recevez par e-mail un lien pour choisir un nouveau mot de passe."
-      footer={<Link to="/connexion" className="font-semibold text-brand hover:text-brand-dark">Retour à la connexion</Link>}
+      footer={<Link to="/connexion" className="font-semibold text-brand hover:text-brand-dark">← Retour à la connexion</Link>}
     >
       {sent ? (
         <div className="rounded-xl border border-success/25 bg-success-light/50 p-5 text-sm text-success-dark">
