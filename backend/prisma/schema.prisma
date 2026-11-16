@@ -28,6 +28,7 @@ model Tenant {
   googleDriveRefreshToken String?  // chiffré (AES-256-GCM), jamais renvoyé au navigateur
   googleDriveFolderId    String?
   googleDriveConnectedAt DateTime?
+  expiryReminderSentAt   DateTime? // dernier rappel envoyé pour la fin d'essai / d'abonnement
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -52,6 +53,8 @@ model User {
   passwordHash String
   role         String      @default("lecteur")
   isActive     Boolean     @default(true)
+  mustChangePassword Boolean @default(false) // mot de passe temporaire à remplacer à la première connexion
+  passwordChangedAt  DateTime? // les sessions ouvertes avant cette date sont invalidées
   lastLoginAt  DateTime?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -223,6 +226,20 @@ model PushSubscription {
   auth      String
   userAgent String?
   createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Liens à usage unique pour choisir ou réinitialiser un mot de passe (invitation, mot de passe oublié).
+// Seule l'empreinte SHA-256 du jeton est stockée.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  purpose   String    // reinitialisation | invitation
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }

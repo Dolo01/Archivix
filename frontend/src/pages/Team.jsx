@@ -32,6 +32,8 @@ export default function Team() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [filter, setFilter] = useState("");
+  const [emailEnabled, setEmailEnabled] = useState(false);
+  const [notice, setNotice] = useState("");
 
   function fetchUsers() {
     api.get("/users").then(({ data }) => setUsers(data));
@@ -40,6 +42,7 @@ export default function Team() {
   useEffect(() => {
     fetchUsers();
     api.get("/departments").then(({ data }) => setDepartments(data)).catch(() => {});
+    api.get("/auth/config").then(({ data }) => setEmailEnabled(Boolean(data.emailEnabled))).catch(() => {});
   }, []);
 
   async function handleCreate(e) {
@@ -47,7 +50,14 @@ export default function Team() {
     setError("");
     setSubmitting(true);
     try {
-      await api.post("/users", form);
+      const { data } = await api.post("/users", form);
+      setNotice(
+        data.invitationSent
+          ? `Invitation envoyée à ${data.email}. Le lien pour choisir son mot de passe est valable 3 jours.`
+          : !form.password
+          ? `${data.fullName} a été ajouté, mais l'e-mail n'a pas pu partir. Ouvrez sa fiche (crayon) et cliquez sur « Envoyer un lien de connexion ».`
+          : `${data.fullName} a été ajouté. Communiquez-lui son mot de passe temporaire : il devra le changer à sa première connexion.`
+      );
       setModalOpen(false);
       setForm({ fullName: "", email: "", password: "", role: "lecteur", departmentId: "" });
       fetchUsers();
@@ -81,6 +91,21 @@ export default function Team() {
       setError(err.response?.data?.message || "Impossible de modifier ce membre.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  const [resending, setResending] = useState(false);
+  async function resendInvitation() {
+    setResending(true);
+    setError("");
+    try {
+      const { data } = await api.post(`/users/${editMember.id}/invitation`);
+      setNotice(data.message);
+      setEditMember(null);
+    } catch (err) {
+      setError(err.response?.data?.message || "Impossible d'envoyer le lien.");
+    } finally {
+      setResending(false);
     }
   }
 
@@ -120,6 +145,13 @@ export default function Team() {
           </button>
         }
       />
+
+      {notice && (
+        <div className="alert-success flex items-start justify-between gap-3">
+          <span>{notice}</span>
+          <button onClick={() => setNotice("")} className="shrink-0 text-xs font-medium underline">Fermer</button>
+        </div>
+      )}
 
       <div className="card overflow-hidden">
         <div className="border-b border-line p-3">
@@ -180,7 +212,11 @@ export default function Team() {
         )}
       </div>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Inviter un membre" description="Le membre se connectera avec cet email et ce mot de passe temporaire.">
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Inviter un membre" description={
+          emailEnabled
+            ? "Le membre reçoit un e-mail pour choisir lui-même son mot de passe."
+            : "Le membre se connectera avec cet email et ce mot de passe temporaire."
+        }>
         <form onSubmit={handleCreate} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Nom complet">
@@ -190,8 +226,23 @@ export default function Team() {
               <input type="email" required className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </Field>
           </div>
-          <Field label="Mot de passe temporaire" hint="6 caractères minimum. Communiquez-le au membre de façon sécurisée.">
-            <input type="password" required minLength={6} className="input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <Field
+            label={emailEnabled ? "Mot de passe temporaire (facultatif)" : "Mot de passe temporaire"}
+            hint={
+              emailEnabled
+                ? "Laissez vide pour envoyer une invitation par e-mail. Sinon, 8 caractères minimum : le membre devra le changer à sa première connexion."
+                : "8 caractères minimum. Communiquez-le au membre de façon sécurisée : il devra le changer à sa première connexion."
+            }
+          >
+            <input
+              type="password"
+              required={!emailEnabled}
+              minLength={8}
+              autoComplete="new-password"
+              className="input"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+            />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Rôle">
@@ -207,7 +258,7 @@ export default function Team() {
           <div className="flex justify-end gap-2 border-t border-line pt-4">
             <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Annuler</button>
             <button type="submit" disabled={submitting} className="btn-primary">
-              {submitting ? "Ajout…" : "Ajouter le membre"}
+              {submitting ? "Envoi…" : emailEnabled && !form.password ? "Envoyer l'invitation" : "Ajouter le membre"}
             </button>
           </div>
         </form>
@@ -238,6 +289,17 @@ export default function Team() {
               onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
             />
           </label>
+
+          {emailEnabled && editMember && editMember.id !== currentUser?.id && editForm.isActive && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-paper-dim/60 px-4 py-3">
+              <span className="min-w-0 text-xs text-ink/60">
+                Invitation non reçue ou mot de passe perdu ? Envoyez-lui un lien pour choisir un nouveau mot de passe.
+              </span>
+              <button type="button" onClick={resendInvitation} disabled={resending} className="btn-secondary px-3 py-1.5 text-xs">
+                {resending ? "Envoi…" : "Envoyer un lien de connexion"}
+              </button>
+            </div>
+          )}
 
           {error && <p className="alert-error">{error}</p>}
 

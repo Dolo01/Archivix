@@ -5,6 +5,9 @@ import Landing from "./pages/Landing.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Privacy from "./pages/Privacy.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
+import ForcePasswordChange from "./pages/ForcePasswordChange.jsx";
 import DashboardLayout from "./layouts/DashboardLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Documents from "./pages/Documents.jsx";
@@ -27,6 +30,7 @@ function ProtectedRoute({ children }) {
     );
   }
   if (!user) return <Navigate to="/connexion" replace />;
+  if (user.mustChangePassword) return <ForcePasswordChange />;
   return children;
 }
 
@@ -56,6 +60,8 @@ export default function App() {
       <Route path="/connexion" element={<Login />} />
       <Route path="/inscription" element={<Register />} />
       <Route path="/confidentialite" element={<Privacy />} />
+      <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
+      <Route path="/reinitialiser" element={<ResetPassword />} />
 
       <Route path="/superadmin/connexion" element={<SuperAdminLogin />} />
       <Route

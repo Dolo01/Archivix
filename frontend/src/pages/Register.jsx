@@ -52,8 +52,8 @@ export default function Register() {
         <Field label="Email professionnel">
           <input type="email" required autoComplete="email" value={form.email} onChange={update("email")} className="input" placeholder="vous@organisation.com" />
         </Field>
-        <Field label="Mot de passe" hint="6 caractères minimum.">
-          <input type="password" required minLength={6} autoComplete="new-password" value={form.password} onChange={update("password")} className="input" />
+        <Field label="Mot de passe" hint="8 caractères minimum.">
+          <input type="password" required minLength={8} autoComplete="new-password" value={form.password} onChange={update("password")} className="input" />
         </Field>
 
         {error && <p className="alert-error">{error}</p>}

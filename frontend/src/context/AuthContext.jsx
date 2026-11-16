@@ -39,6 +39,12 @@ export function AuthProvider({ children }) {
     return data.tenant;
   }
 
+  // Après un changement de mot de passe, le serveur ferme les anciennes sessions et en fournit une nouvelle
+  function passwordChanged({ token, user: updated }) {
+    if (token) localStorage.setItem("archivix_token", token);
+    if (updated) setUser((u) => ({ ...u, ...updated }));
+  }
+
   function logout() {
     localStorage.removeItem("archivix_token");
     closeSocket();
@@ -47,7 +53,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, tenant, loading, loginSuccess, logout, refreshTenant }}>
+    <AuthContext.Provider value={{ user, tenant, loading, loginSuccess, logout, refreshTenant, passwordChanged }}>
       {children}
     </AuthContext.Provider>
   );
