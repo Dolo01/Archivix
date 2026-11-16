@@ -1,6 +1,6 @@
 # Archivix
 
-SaaS d'archivage numérique multi-entreprises — front React (Vite + Tailwind), back Node.js (Express + Prisma/PostgreSQL), abonnement géré manuellement via Wave / Orange Money.
+SaaS d'archivage numérique multi-entreprises — front React (Vite + Tailwind), back Node.js (Express + Prisma/PostgreSQL sur Neon), abonnement géré manuellement via Wave / Orange Money.
 
 ## Structure
 
@@ -10,29 +10,23 @@ archivix/
 └── frontend/    Application React (landing, connexion, tableau de bord, espace super-admin)
 ```
 
-## ⚠️ Mise à jour importante : passage à PostgreSQL
+## Base de données et stockage : Neon
 
-Le projet utilisait SQLite (fichier local), il utilise maintenant **PostgreSQL** — nécessaire pour un vrai déploiement. Il te faut une base Postgres accessible : le plus simple et gratuit est **Supabase** (voir `DEPLOYMENT.md` pour la marche à suivre complète, pas à pas).
+Archivix utilise **PostgreSQL** et un **stockage de fichiers compatible S3**, tous deux fournis par **Neon** (offre gratuite, région Francfort). La marche à suivre complète est dans `DEPLOYMENT.md` (section 1).
 
 En local pour développer, deux options :
-- Une base Supabase gratuite (recommandé, même URL qu'en production) ;
-- Ou PostgreSQL installé localement (`DATABASE_URL="postgresql://user:password@localhost:5432/archivix"`).
+- utiliser la base Neon (renseigner `DATABASE_URL` et `DATABASE_URL_UNPOOLED` dans `backend/.env`) ;
+- ou un PostgreSQL installé localement, en mettant la même adresse dans les deux variables (`postgresql://user:password@localhost:5432/archivix`).
 
-Si tu avais une ancienne base SQLite (`archivix.db`), elle n'est plus utilisée — supprime-la ainsi que l'historique de migrations avant de repartir sur Postgres :
-
-```bash
-cd backend
-rm -f archivix.db
-rm -rf prisma/migrations
-```
+⚠️ Ne supprimez jamais le dossier `backend/prisma/migrations` : il décrit l'historique de la base et sert à chaque déploiement.
 
 ## Démarrer le backend
 
 ```bash
 cd backend
-cp .env.example .env   # renseigner DATABASE_URL (Postgres) et les autres variables
+cp .env.example .env   # renseigner DATABASE_URL, DATABASE_URL_UNPOOLED et les autres variables
 npm install
-npx prisma migrate dev --name init
+npx prisma migrate deploy   # crée ou met à jour les tables
 npm run create-superadmin -- "Votre Nom" vous@exemple.com votremotdepasse
 npm run dev
 ```
@@ -41,11 +35,20 @@ La commande `create-superadmin` crée votre compte de super-administrateur de la
 
 ## Stockage des fichiers
 
-En développement, si `SUPABASE_URL` n'est pas renseigné dans `.env`, les fichiers (documents, captures de paiement) sont simplement écrits dans `backend/uploads/`. En production, renseigne `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` et `SUPABASE_BUCKET` : les fichiers partent alors vers Supabase Storage et ne sont jamais perdus au redémarrage du serveur (contrairement à un disque d'hébergeur gratuit, qui est effacé à chaque redéploiement).
+Les documents et captures de paiement sont enregistrés, par ordre de priorité :
+1. sur **Neon Object Storage** si `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID` et `AWS_SECRET_ACCESS_KEY` sont renseignés (recommandé) ;
+2. sinon sur **Supabase Storage** si `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` le sont (ancienne configuration, toujours lue) ;
+3. sinon dans `backend/uploads/` (développement uniquement : le disque d'un hébergeur gratuit est effacé à chaque redéploiement).
+
+Aucun fichier n'est accessible par une adresse publique : chaque ouverture passe par un lien temporaire (5 minutes) délivré après vérification des droits. Au démarrage, le serveur affiche le stockage utilisé.
+
+## Stockage dans le Google Drive du client (optionnel)
+
+Chaque organisation peut connecter son propre Google Drive depuis **Paramètres** (administrateurs). Ses nouveaux documents y sont enregistrés (un dossier par organisation, un sous-dossier par département) ; les droits d'accès d'Archivix continuent de s'appliquer et les fichiers sont ouverts via des liens signés valables 5 minutes. Configuration Google Cloud : voir la section 6 de `DEPLOYMENT.md`.
 
 ## Déploiement gratuit
 
-Voir **`DEPLOYMENT.md`** pour un guide complet, étape par étape, sans nom de domaine : Supabase (base + stockage) + Render (backend en Web Service, frontend en Static Site).
+Voir **`DEPLOYMENT.md`** pour un guide complet, étape par étape, sans nom de domaine : Neon (base + stockage) + Render (backend en Web Service, frontend en Static Site).
 
 ## Démarrer le frontend
 

@@ -2,6 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import superAdminApi from "../../api/superAdminClient";
 import { useSuperAdmin } from "../../context/SuperAdminContext.jsx";
+import { ShieldCheck } from "lucide-react";
+import Logo from "../../components/Logo.jsx";
+import Field from "../../components/ui/Field.jsx";
 
 export default function SuperAdminLogin() {
   const [email, setEmail] = useState("");
@@ -27,28 +30,29 @@ export default function SuperAdminLogin() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink px-6">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-card">
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-ink to-brass text-white font-display text-sm font-semibold">A</div>
-          <span className="font-display text-lg font-semibold">Archivix — Super Admin</span>
-        </div>
-        <p className="mt-4 text-sm text-ink/60">Espace réservé à l'exploitant de la plateforme.</p>
+    <div className="flex min-h-screen items-center justify-center bg-paper-dim px-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex justify-center"><Logo /></div>
+        <div className="card p-8 shadow-raised">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={18} className="text-brand" />
+            <h1 className="text-lg font-semibold">Administration de la plateforme</h1>
+          </div>
+          <p className="mt-1 text-sm text-ink/55">Espace réservé à l'exploitant d'Archivix.</p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label className="label-eyebrow">Email</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input mt-1.5" />
-          </div>
-          <div>
-            <label className="label-eyebrow">Mot de passe</label>
-            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="input mt-1.5" />
-          </div>
-          {error && <p className="rounded-md bg-danger-light px-3 py-2 text-sm text-danger-dark">{error}</p>}
-          <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? "Connexion…" : "Se connecter"}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <Field label="Email">
+              <input type="email" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} className="input" />
+            </Field>
+            <Field label="Mot de passe">
+              <input type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="input" />
+            </Field>
+            {error && <p className="alert-error">{error}</p>}
+            <button type="submit" disabled={loading} className="btn-dark w-full py-2.5">
+              {loading ? "Connexion…" : "Se connecter"}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

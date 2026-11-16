@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
+import AuthLayout from "../components/AuthLayout.jsx";
+import Field from "../components/ui/Field.jsx";
 
 export default function Register() {
   const [form, setForm] = useState({ companyName: "", fullName: "", email: "", password: "" });
@@ -30,44 +32,40 @@ export default function Register() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center overflow-y-auto bg-paper px-6 py-12">
-      <div className="w-full max-w-sm">
-        <Link to="/" className="inline-flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-ink to-brass text-white font-display text-sm font-semibold">A</div>
-          <span className="font-display text-lg font-semibold">Archivix</span>
-        </Link>
-        <h1 className="mt-6 font-display text-2xl font-semibold">Créer le registre de votre entreprise</h1>
-        <p className="mt-1 text-sm text-ink/60">14 jours d'essai, sans engagement.</p>
+    <AuthLayout
+      title="Créer l'espace de votre organisation"
+      subtitle="14 jours d'essai gratuit, sans engagement ni carte bancaire."
+      footer={
+        <>
+          Déjà un compte ?{" "}
+          <Link to="/connexion" className="font-semibold text-brand hover:text-brand-dark">Se connecter</Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Field label="Nom de l'organisation">
+          <input required value={form.companyName} onChange={update("companyName")} className="input" placeholder="Cabinet, entreprise ou administration" />
+        </Field>
+        <Field label="Votre nom complet">
+          <input required autoComplete="name" value={form.fullName} onChange={update("fullName")} className="input" placeholder="Prénom Nom" />
+        </Field>
+        <Field label="Email professionnel">
+          <input type="email" required autoComplete="email" value={form.email} onChange={update("email")} className="input" placeholder="vous@organisation.com" />
+        </Field>
+        <Field label="Mot de passe" hint="6 caractères minimum.">
+          <input type="password" required minLength={6} autoComplete="new-password" value={form.password} onChange={update("password")} className="input" />
+        </Field>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-          <div>
-            <label className="label-eyebrow">Nom de l'entreprise</label>
-            <input required value={form.companyName} onChange={update("companyName")} className="input mt-1.5" placeholder="ISA Conseils" />
-          </div>
-          <div>
-            <label className="label-eyebrow">Votre nom complet</label>
-            <input required value={form.fullName} onChange={update("fullName")} className="input mt-1.5" placeholder="Aïssata Traoré" />
-          </div>
-          <div>
-            <label className="label-eyebrow">Email professionnel</label>
-            <input type="email" required value={form.email} onChange={update("email")} className="input mt-1.5" placeholder="vous@entreprise.com" />
-          </div>
-          <div>
-            <label className="label-eyebrow">Mot de passe</label>
-            <input type="password" required minLength={6} value={form.password} onChange={update("password")} className="input mt-1.5" placeholder="6 caractères minimum" />
-          </div>
+        {error && <p className="alert-error">{error}</p>}
 
-          {error && <p className="rounded-md bg-danger-light px-3 py-2 text-sm text-danger-dark">{error}</p>}
-
-          <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? "Création…" : "Créer mon registre"}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-ink/60">
-          Déjà inscrit ? <Link to="/connexion" className="font-semibold text-brass-dark">Se connecter</Link>
+        <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
+          {loading ? "Création…" : "Démarrer l'essai gratuit"}
+        </button>
+        <p className="text-center text-xs text-ink/45">
+          Vous serez l'administrateur de cet espace. En créant un compte, vous acceptez notre{" "}
+          <Link to="/confidentialite" className="underline hover:text-ink">politique de confidentialité</Link>.
         </p>
-      </div>
-    </div>
+      </form>
+    </AuthLayout>
   );
 }

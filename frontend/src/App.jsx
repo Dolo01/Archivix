@@ -4,12 +4,14 @@ import { useSuperAdmin } from "./context/SuperAdminContext.jsx";
 import Landing from "./pages/Landing.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
+import Privacy from "./pages/Privacy.jsx";
 import DashboardLayout from "./layouts/DashboardLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Documents from "./pages/Documents.jsx";
 import Billing from "./pages/Billing.jsx";
 import Team from "./pages/Team.jsx";
 import Departments from "./pages/Departments.jsx";
+import Settings from "./pages/Settings.jsx";
 import SuperAdminLogin from "./pages/superadmin/SuperAdminLogin.jsx";
 import SuperAdminDashboard from "./pages/superadmin/SuperAdminDashboard.jsx";
 
@@ -17,8 +19,8 @@ function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-paper">
-        <div className="label-eyebrow animate-pulse">Chargement d'Archivix…</div>
+      <div className="flex h-screen items-center justify-center bg-paper-dim">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand/20 border-t-brand" aria-label="Chargement" />
       </div>
     );
   }
@@ -36,8 +38,8 @@ function SuperAdminRoute({ children }) {
   const { admin, loading } = useSuperAdmin();
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-ink text-white">
-        <div className="label-eyebrow animate-pulse">Chargement…</div>
+      <div className="flex h-screen items-center justify-center bg-paper-dim">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand/20 border-t-brand" aria-label="Chargement" />
       </div>
     );
   }
@@ -51,6 +53,7 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/connexion" element={<Login />} />
       <Route path="/inscription" element={<Register />} />
+      <Route path="/confidentialite" element={<Privacy />} />
 
       <Route path="/superadmin/connexion" element={<SuperAdminLogin />} />
       <Route
@@ -78,6 +81,14 @@ export default function App() {
           element={
             <AdminRoute>
               <Billing />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="parametres"
+          element={
+            <AdminRoute>
+              <Settings />
             </AdminRoute>
           }
         />

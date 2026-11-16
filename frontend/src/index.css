@@ -9,19 +9,19 @@ body,
 }
 
 body {
-  @apply bg-paper text-ink font-body antialiased;
+  @apply bg-paper-dim text-ink font-body antialiased;
+  font-feature-settings: "cv11", "ss01";
 }
 
 ::selection {
-  @apply bg-brass/30;
+  @apply bg-brand/20;
 }
 
 *:focus-visible {
-  outline: 2px solid #8B5CF6;
+  outline: 2px solid #1d4ed8;
   outline-offset: 2px;
 }
 
-/* Défilement plus fin et discret */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -30,29 +30,24 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(30, 27, 46, 0.18);
+  background: rgba(15, 23, 42, 0.16);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(30, 27, 46, 0.3);
+  background: rgba(15, 23, 42, 0.28);
   background-clip: content-box;
 }
 
-/* Apparition douce du contenu principal (opacité seule : un transform, même à 0,
-   créerait un contexte de positionnement qui piégerait les modales "fixed" à
-   l'intérieur de cette zone au lieu de tout l'écran) */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+/* Apparition douce du contenu (opacité seule : un transform piégerait les
+   modales "fixed" dans cette zone au lieu de tout l'écran) */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .animate-in {
-  animation: fadeInUp 0.35s ease-out both;
+  animation: fadeIn 0.25s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -62,70 +57,110 @@ body {
   }
 }
 
-.btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold tracking-tight transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none;
-}
+@layer components {
+  /* ---------- Boutons ---------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand px-4 py-2.5 text-white shadow-card hover:bg-brand-dark;
+  }
+  .btn-dark {
+    @apply btn bg-ink px-4 py-2.5 text-white shadow-card hover:bg-ink-light;
+  }
+  .btn-secondary {
+    @apply btn border border-line bg-white px-4 py-2.5 text-ink shadow-card hover:bg-paper-dim;
+  }
+  .btn-outline {
+    @apply btn-secondary;
+  }
+  .btn-ghost {
+    @apply btn px-3 py-2 text-ink/70 hover:bg-ink/[0.05] hover:text-ink;
+  }
+  .btn-success {
+    @apply btn-primary;
+  }
+  .btn-danger {
+    @apply btn bg-danger px-4 py-2.5 text-white shadow-card hover:bg-danger-dark;
+  }
+  .btn-danger-soft {
+    @apply btn border border-danger/25 bg-white px-4 py-2.5 text-danger hover:bg-danger-light;
+  }
 
-.btn-primary {
-  @apply btn bg-ink text-paper px-5 py-2.5 shadow-card hover:bg-ink-light hover:shadow-lg hover:-translate-y-px active:translate-y-0 active:scale-[0.97];
-}
+  /* Boutons icône des tableaux */
+  .icon-btn {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md text-ink/45 transition-colors duration-150;
+  }
+  .icon-btn-neutral { @apply icon-btn hover:bg-ink/[0.06] hover:text-ink; }
+  .icon-btn-info { @apply icon-btn hover:bg-brand-50 hover:text-brand; }
+  .icon-btn-brand { @apply icon-btn hover:bg-brand-50 hover:text-brand; }
+  .icon-btn-success { @apply icon-btn text-success hover:bg-success-light; }
+  .icon-btn-danger { @apply icon-btn hover:bg-danger-light hover:text-danger; }
 
-.btn-brass {
-  @apply btn bg-brass text-white px-5 py-2.5 shadow-card hover:bg-brass-dark hover:shadow-lg hover:-translate-y-px active:translate-y-0 active:scale-[0.97];
-}
+  /* ---------- Formulaires ---------- */
+  .input {
+    @apply w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-ink shadow-card outline-none transition placeholder:text-ink/35 focus:border-brand focus:ring-4 focus:ring-brand/10;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink/80;
+  }
+  /* Ancienne étiquette, conservée pour compatibilité */
+  .label-eyebrow {
+    @apply text-xs font-medium uppercase tracking-wider text-ink/50;
+  }
+  .alert-error {
+    @apply rounded-lg border border-danger/20 bg-danger-light/60 px-3.5 py-2.5 text-sm text-danger-dark;
+  }
+  .alert-success {
+    @apply flex items-center gap-2 rounded-lg border border-success/20 bg-success-light/60 px-3.5 py-2.5 text-sm text-success-dark;
+  }
 
-.btn-success {
-  @apply btn bg-success text-white px-5 py-2.5 shadow-card hover:bg-success-dark hover:shadow-lg hover:-translate-y-px active:translate-y-0 active:scale-[0.97];
-}
+  /* ---------- Surfaces ---------- */
+  .card {
+    @apply rounded-xl border border-line bg-white shadow-card;
+  }
+  .card-interactive {
+    @apply card transition-shadow duration-150 hover:shadow-raised;
+  }
+  .card-header {
+    @apply flex items-center justify-between gap-3 border-b border-line px-5 py-4;
+  }
+  .card-title {
+    @apply text-[15px] font-semibold text-ink;
+  }
 
-.btn-danger {
-  @apply btn bg-danger text-white px-5 py-2.5 shadow-card hover:bg-danger-dark hover:shadow-lg hover:-translate-y-px active:translate-y-0 active:scale-[0.97];
-}
+  /* ---------- Tableaux ---------- */
+  .table {
+    @apply w-full text-sm;
+  }
+  .table thead tr {
+    @apply border-b border-line bg-paper-dim/70 text-left;
+  }
+  .table th {
+    @apply relative whitespace-nowrap px-5 py-3 text-xs font-medium uppercase tracking-wider text-ink/50;
+  }
+  .table td {
+    @apply px-5 py-3.5 align-middle;
+  }
+  .table tbody tr {
+    @apply border-b border-line last:border-0 transition-colors hover:bg-paper-dim/60;
+  }
 
-.btn-info {
-  @apply btn bg-info text-white px-5 py-2.5 shadow-card hover:bg-info-dark hover:shadow-lg hover:-translate-y-px active:translate-y-0 active:scale-[0.97];
-}
+  /* ---------- Pastilles ---------- */
+  .badge {
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-neutral { @apply badge bg-ink/[0.06] text-ink/70; }
+  .badge-brand { @apply badge bg-brand-50 text-brand-dark; }
+  .badge-success { @apply badge bg-success-light text-success-dark; }
+  .badge-warning { @apply badge bg-warning-light text-warning-dark; }
+  .badge-danger { @apply badge bg-danger-light text-danger-dark; }
 
-.btn-ghost {
-  @apply btn bg-transparent text-ink px-4 py-2 hover:bg-ink/5 active:scale-[0.97];
-}
-
-.btn-outline {
-  @apply btn border-2 border-ink/15 text-ink px-4 py-2 hover:border-brass/50 hover:bg-brass/5 active:scale-[0.97];
-}
-
-/* Boutons d'action ronds pour les tableaux (icônes) */
-.icon-btn {
-  @apply inline-flex h-8 w-8 items-center justify-center rounded-full transition-all duration-150 hover:scale-110 active:scale-90;
-}
-.icon-btn-neutral {
-  @apply icon-btn text-ink/50 hover:bg-ink/[0.07] hover:text-ink;
-}
-.icon-btn-info {
-  @apply icon-btn text-info hover:bg-info-light;
-}
-.icon-btn-brass {
-  @apply icon-btn text-brass-dark hover:bg-brass/15;
-}
-.icon-btn-success {
-  @apply icon-btn text-success-dark hover:bg-success-light;
-}
-.icon-btn-danger {
-  @apply icon-btn text-danger hover:bg-danger-light;
-}
-
-.input {
-  @apply w-full rounded-xl border border-ink/15 bg-white/70 px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/35 transition-shadow duration-150 focus:border-brass focus:ring-4 focus:ring-brass/15 outline-none;
-}
-
-.card {
-  @apply rounded-2xl border border-ink/10 bg-white/60 shadow-card;
-}
-
-.card-interactive {
-  @apply card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg;
-}
-
-.label-eyebrow {
-  @apply text-xs font-mono uppercase tracking-[0.14em] text-ink/50;
+  /* ---------- En-tête de page ---------- */
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-ink;
+  }
+  .page-subtitle {
+    @apply mt-1 text-sm text-ink/55;
+  }
 }

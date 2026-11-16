@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const prisma = require("../config/prisma");
 const { notifyTenantAdmins } = require("../utils/notify");
 const { PLANS } = require("../utils/plans");
+const { displayUrl } = require("../utils/storage");
 
 exports.login = async (req, res) => {
   try {
@@ -48,7 +49,8 @@ exports.subscriptionRequests = async (req, res) => {
     include: { tenant: { select: { id: true, name: true, slug: true, subscriptionExpiresAt: true } } },
     orderBy: { createdAt: "desc" },
   });
-  res.json(requests);
+  const withLinks = await Promise.all(requests.map(async (r) => ({ ...r, captureUrl: await displayUrl(r.captureUrl) })));
+  res.json(withLinks);
 };
 
 exports.approveRequest = async (req, res) => {

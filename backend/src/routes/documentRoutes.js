@@ -4,10 +4,14 @@ const { requireAuth, requireRole } = require("../middleware/auth");
 const upload = require("../middleware/upload");
 const documentController = require("../controllers/documentController");
 
+// Ouverture d'un fichier Google Drive via lien signé (ouvert dans un nouvel onglet, donc sans en-tête d'authentification)
+router.get("/:id/fichier", documentController.streamFile);
+
 router.use(requireAuth);
 
 router.get("/", documentController.list);
 router.get("/:id", documentController.getOne);
+router.get("/:id/lien", documentController.link);
 router.post("/", upload.single("file"), documentController.upload);
 router.patch("/:id", requireRole("admin", "gestionnaire"), documentController.update);
 router.delete("/:id", requireRole("admin", "gestionnaire"), documentController.remove);

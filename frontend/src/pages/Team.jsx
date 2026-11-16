@@ -1,10 +1,25 @@
 import { useEffect, useState } from "react";
-import { UserPlus, Trash2, Pencil } from "lucide-react";
+import { UserPlus, Trash2, Pencil, Search, Users } from "lucide-react";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
 import Modal from "../components/Modal.jsx";
+import PageHeader from "../components/ui/PageHeader.jsx";
+import EmptyState from "../components/ui/EmptyState.jsx";
+import Field from "../components/ui/Field.jsx";
+import Avatar from "../components/ui/Avatar.jsx";
 
 const ROLE_LABEL = { admin: "Administrateur", gestionnaire: "Gestionnaire", lecteur: "Lecteur" };
+const ROLE_BADGE = { admin: "badge-brand", gestionnaire: "badge-neutral", lecteur: "badge-neutral" };
+
+function RoleSelect({ value, onChange }) {
+  return (
+    <select className="input" value={value} onChange={onChange}>
+      <option value="lecteur">Lecteur — consultation seule</option>
+      <option value="gestionnaire">Gestionnaire — dépôt et classement</option>
+      <option value="admin">Administrateur — accès complet</option>
+    </select>
+  );
+}
 
 export default function Team() {
   const { user: currentUser } = useAuth();
@@ -16,6 +31,7 @@ export default function Team() {
   const [editForm, setEditForm] = useState({ fullName: "", role: "lecteur", isActive: true, departmentId: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [filter, setFilter] = useState("");
 
   function fetchUsers() {
     api.get("/users").then(({ data }) => setUsers(data));
@@ -43,6 +59,7 @@ export default function Team() {
   }
 
   function openEdit(member) {
+    setError("");
     setEditMember(member);
     setEditForm({
       fullName: member.fullName,
@@ -77,143 +94,159 @@ export default function Team() {
     }
   }
 
+  const visible = users.filter((u) => {
+    const f = filter.trim().toLowerCase();
+    return !f || u.fullName.toLowerCase().includes(f) || u.email.toLowerCase().includes(f);
+  });
+  const activeCount = users.filter((u) => u.isActive).length;
+
+  const deptSelect = (value, onChange) => (
+    <select className="input" value={value} onChange={onChange}>
+      <option value="">Aucun département</option>
+      {departments.map((d) => (
+        <option key={d.id} value={d.id}>{d.name}</option>
+      ))}
+    </select>
+  );
+
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <span className="label-eyebrow">Accès</span>
-          <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">Équipe</h1>
-        </div>
-        <button onClick={() => setModalOpen(true)} className="btn-primary">
-          <UserPlus size={16} /> Ajouter un membre
-        </button>
-      </div>
-
-      <div className="card mt-6 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-ink/10 bg-ink/[0.03] text-left">
-              <th className="px-5 py-3 font-medium text-ink/60">Nom</th>
-              <th className="px-5 py-3 font-medium text-ink/60">Email</th>
-              <th className="px-5 py-3 font-medium text-ink/60">Rôle</th>
-              <th className="px-5 py-3 font-medium text-ink/60">Département</th>
-              <th className="px-5 py-3 font-medium text-ink/60">Statut</th>
-              <th className="px-5 py-3 font-medium text-ink/60"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-ink/10">
-            {users.map((u, i) => (
-              <tr key={u.id} className="hover:bg-ink/[0.02]">
-                <td className="px-5 py-3">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-                      style={{ background: ["#8B5CF6", "#FF6B4A", "#2FD5D0", "#16A34A", "#2563EB"][i % 5] }}
-                    >
-                      {u.fullName.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
-                    </div>
-                    <span className="font-medium">{u.fullName}</span>
-                  </div>
-                </td>
-                <td className="px-5 py-3 text-ink/60">{u.email}</td>
-                <td className="px-5 py-3 text-ink/60">{ROLE_LABEL[u.role]}</td>
-                <td className="px-5 py-3 text-ink/60">{u.department?.name || "—"}</td>
-                <td className="px-5 py-3">
-                  <span className={`text-xs font-mono ${u.isActive ? "text-success-dark" : "text-danger"}`}>
-                    {u.isActive ? "Actif" : "Désactivé"}
-                  </span>
-                </td>
-                <td className="px-5 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => openEdit(u)} title="Modifier ce membre" className="icon-btn-info">
-                      <Pencil size={15} />
-                    </button>
-                    {u.id !== currentUser?.id && (
-                      <button onClick={() => handleDelete(u)} title="Supprimer ce membre" className="icon-btn-danger">
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Ajouter un membre à l'équipe">
-        <form onSubmit={handleCreate} className="space-y-4">
-          <div>
-            <label className="label-eyebrow">Nom complet</label>
-            <input required className="input mt-1.5" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-          </div>
-          <div>
-            <label className="label-eyebrow">Email</label>
-            <input type="email" required className="input mt-1.5" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          </div>
-          <div>
-            <label className="label-eyebrow">Mot de passe temporaire</label>
-            <input type="password" required minLength={6} className="input mt-1.5" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-          </div>
-          <div>
-            <label className="label-eyebrow">Rôle</label>
-            <select className="input mt-1.5" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              <option value="lecteur">Lecteur — consultation seule</option>
-              <option value="gestionnaire">Gestionnaire — dépôt et classement</option>
-              <option value="admin">Administrateur — accès complet</option>
-            </select>
-          </div>
-          <div>
-            <label className="label-eyebrow">Département</label>
-            <select className="input mt-1.5" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
-              <option value="">Aucun département</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {error && <p className="rounded-md bg-danger-light px-3 py-2 text-sm text-danger-dark">{error}</p>}
-
-          <button type="submit" disabled={submitting} className="btn-success w-full">
-            {submitting ? "Ajout en cours…" : "Ajouter ce membre"}
+    <div className="space-y-6">
+      <PageHeader
+        title="Utilisateurs"
+        subtitle={`${users.length} compte${users.length > 1 ? "s" : ""} · ${activeCount} actif${activeCount > 1 ? "s" : ""}. Gérez les accès et les rôles de votre équipe.`}
+        actions={
+          <button onClick={() => { setError(""); setModalOpen(true); }} className="btn-primary">
+            <UserPlus size={16} /> Inviter un membre
           </button>
+        }
+      />
+
+      <div className="card overflow-hidden">
+        <div className="border-b border-line p-3">
+          <div className="relative max-w-sm">
+            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/40" />
+            <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filtrer par nom ou email" className="input pl-9" />
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Membre</th>
+                <th>Rôle</th>
+                <th className="hidden md:table-cell">Département</th>
+                <th>Statut</th>
+                <th className="w-0"><span className="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((u) => (
+                <tr key={u.id}>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <Avatar name={u.fullName} size={34} />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">
+                          {u.fullName}
+                          {u.id === currentUser?.id && <span className="ml-1.5 text-xs font-normal text-ink/45">(vous)</span>}
+                        </p>
+                        <p className="truncate text-xs text-ink/50">{u.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span className={ROLE_BADGE[u.role] || "badge-neutral"}>{ROLE_LABEL[u.role] || u.role}</span></td>
+                  <td className="hidden text-ink/65 md:table-cell">{u.department?.name || "—"}</td>
+                  <td>
+                    <span className={u.isActive ? "badge-success" : "badge-danger"}>
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                      {u.isActive ? "Actif" : "Désactivé"}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="flex items-center justify-end gap-0.5">
+                      <button onClick={() => openEdit(u)} title="Modifier" className="icon-btn-neutral"><Pencil size={15} /></button>
+                      {u.id !== currentUser?.id && (
+                        <button onClick={() => handleDelete(u)} title="Retirer" className="icon-btn-danger"><Trash2 size={15} /></button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {visible.length === 0 && (
+          <EmptyState icon={Users} title={filter ? "Aucun membre trouvé" : "Aucun membre"} text={filter ? "Vérifiez l'orthographe du nom ou de l'email." : undefined} />
+        )}
+      </div>
+
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Inviter un membre" description="Le membre se connectera avec cet email et ce mot de passe temporaire.">
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Nom complet">
+              <input required className="input" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+            </Field>
+            <Field label="Email professionnel">
+              <input type="email" required className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </Field>
+          </div>
+          <Field label="Mot de passe temporaire" hint="6 caractères minimum. Communiquez-le au membre de façon sécurisée.">
+            <input type="password" required minLength={6} className="input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Rôle">
+              <RoleSelect value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} />
+            </Field>
+            <Field label="Département">
+              {deptSelect(form.departmentId, (e) => setForm({ ...form, departmentId: e.target.value }))}
+            </Field>
+          </div>
+
+          {error && <p className="alert-error">{error}</p>}
+
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Annuler</button>
+            <button type="submit" disabled={submitting} className="btn-primary">
+              {submitting ? "Ajout…" : "Ajouter le membre"}
+            </button>
+          </div>
         </form>
       </Modal>
 
-      <Modal open={!!editMember} onClose={() => setEditMember(null)} title={`Modifier — ${editMember?.fullName || ""}`}>
+      <Modal open={!!editMember} onClose={() => setEditMember(null)} title="Modifier le membre" description={editMember?.email}>
         <form onSubmit={handleEdit} className="space-y-4">
-          <div>
-            <label className="label-eyebrow">Nom complet</label>
-            <input required className="input mt-1.5" value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} />
+          <Field label="Nom complet">
+            <input required className="input" value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} />
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Rôle">
+              <RoleSelect value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} />
+            </Field>
+            <Field label="Département">
+              {deptSelect(editForm.departmentId, (e) => setEditForm({ ...editForm, departmentId: e.target.value }))}
+            </Field>
           </div>
-          <div>
-            <label className="label-eyebrow">Rôle</label>
-            <select className="input mt-1.5" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
-              <option value="lecteur">Lecteur — consultation seule</option>
-              <option value="gestionnaire">Gestionnaire — dépôt et classement</option>
-              <option value="admin">Administrateur — accès complet</option>
-            </select>
-          </div>
-          <div>
-            <label className="label-eyebrow">Département</label>
-            <select className="input mt-1.5" value={editForm.departmentId} onChange={(e) => setEditForm({ ...editForm, departmentId: e.target.value })}>
-              <option value="">Aucun département</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })} />
-            Compte actif
+          <label className="flex cursor-pointer items-center justify-between rounded-lg border border-line px-4 py-3">
+            <span>
+              <span className="block text-sm font-medium">Compte actif</span>
+              <span className="block text-xs text-ink/50">Un compte désactivé ne peut plus se connecter.</span>
+            </span>
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-brand"
+              checked={editForm.isActive}
+              onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
+            />
           </label>
 
-          {error && <p className="rounded-md bg-danger-light px-3 py-2 text-sm text-danger-dark">{error}</p>}
+          {error && <p className="alert-error">{error}</p>}
 
-          <button type="submit" disabled={submitting} className="btn-success w-full">
-            {submitting ? "Enregistrement…" : "Enregistrer les modifications"}
-          </button>
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <button type="button" onClick={() => setEditMember(null)} className="btn-secondary">Annuler</button>
+            <button type="submit" disabled={submitting} className="btn-primary">
+              {submitting ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          </div>
         </form>
       </Modal>
     </div>

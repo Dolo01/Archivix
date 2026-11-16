@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { NavLink, Outlet, Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutGrid,
   FileStack,
@@ -8,32 +8,88 @@ import {
   Users,
   Search,
   Bell,
-  MoreVertical,
-  ChevronRight,
-  HelpCircle,
   LogOut,
+  Menu,
+  X,
+  LifeBuoy,
+  ChevronsUpDown,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import api from "../api/client";
 import { getSocket } from "../api/socket";
+import Logo from "../components/Logo.jsx";
+import Avatar from "../components/ui/Avatar.jsx";
+
+const ROLE_LABEL = { admin: "Administrateur", gestionnaire: "Gestionnaire", lecteur: "Lecteur" };
+
+const NAV_MAIN = [
+  { to: "/app", label: "Tableau de bord", icon: LayoutGrid, end: true },
+  { to: "/app/documents", label: "Documents", icon: FileStack },
+  { to: "/app/departements", label: "Départements", icon: Building2 },
+];
+const NAV_ADMIN = [
+  { to: "/app/equipe", label: "Utilisateurs", icon: Users },
+  { to: "/app/facturation", label: "Abonnement", icon: CreditCard },
+  { to: "/app/parametres", label: "Paramètres", icon: Settings },
+];
+
+function NavItem({ to, label, icon: Icon, end, onClick }) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      onClick={onClick}
+      className={({ isActive }) =>
+        `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+          isActive ? "bg-brand-50 text-brand-dark" : "text-ink/65 hover:bg-ink/[0.04] hover:text-ink"
+        }`
+      }
+    >
+      <Icon size={17} strokeWidth={2} />
+      {label}
+    </NavLink>
+  );
+}
+
+function useClickOutside(ref, onOutside) {
+  useEffect(() => {
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) onOutside();
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [ref, onOutside]);
+}
 
 export default function DashboardLayout() {
   const { user, tenant, logout } = useAuth();
   const isAdmin = user?.role === "admin";
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unread, setUnread] = useState(0);
+  const [search, setSearch] = useState("");
 
-  function fetchNotifications() {
-    api.get("/notifications").then(({ data }) => {
-      setNotifications(data.notifications);
-      setUnread(data.unread);
-    }).catch(() => {});
-  }
+  const notifRef = useRef(null);
+  const menuRef = useRef(null);
+  useClickOutside(notifRef, () => setNotifOpen(false));
+  useClickOutside(menuRef, () => setMenuOpen(false));
+
+  useEffect(() => setDrawerOpen(false), [location.pathname]);
 
   useEffect(() => {
-    fetchNotifications();
+    api
+      .get("/notifications")
+      .then(({ data }) => {
+        setNotifications(data.notifications);
+        setUnread(data.unread);
+      })
+      .catch(() => {});
     const socket = getSocket();
     function onNotification(n) {
       setNotifications((prev) => [n, ...prev].slice(0, 30));
@@ -43,176 +99,172 @@ export default function DashboardLayout() {
     return () => socket.off("notification", onNotification);
   }, []);
 
-  async function openNotifications() {
-    setNotifOpen((o) => !o);
-    if (!notifOpen && unread > 0) {
-      await api.patch("/notifications/tout-lire");
-      setUnread(0);
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  async function toggleNotifications() {
+    const opening = !notifOpen;
+    setNotifOpen(opening);
+    if (opening && unread > 0) {
+      try {
+        await api.patch("/notifications/tout-lire");
+        setUnread(0);
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      } catch {
+        /* sans gravité */
+      }
     }
   }
 
-  const NAV_MAIN = [
-    { to: "/app", label: "Tableau de bord", icon: LayoutGrid, end: true },
-    { to: "/app/documents", label: "Documents", icon: FileStack },
-    { to: "/app/departements", label: "Départements", icon: Building2 },
-  ];
-  const NAV_ADMIN = [
-    { to: "/app/facturation", label: "Facturation", icon: CreditCard },
-    { to: "/app/equipe", label: "Équipe", icon: Users },
-  ];
+  function handleSearch(e) {
+    e.preventDefault();
+    const q = search.trim();
+    navigate(q ? `/app/documents?q=${encodeURIComponent(q)}` : "/app/documents");
+  }
 
-  const initials = (user?.fullName || "?")
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  const sidebar = (
+    <div className="flex h-full flex-col">
+      <div className="flex h-16 items-center px-5">
+        <Logo size={30} />
+      </div>
 
-  return (
-    <div className="flex min-h-screen bg-paper-dim">
-      <aside className="hidden w-64 shrink-0 flex-col bg-white md:flex">
-        <div className="flex items-center gap-2 px-6 py-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brass text-white">
-            <FileStack size={16} />
-          </div>
-          <span className="font-display text-base font-semibold text-ink">Archivix</span>
+      <div className="mx-3 mb-4 rounded-lg border border-line bg-paper-dim/60 px-3 py-2.5">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-ink/40">Organisation</p>
+        <p className="mt-0.5 truncate text-sm font-semibold text-ink">{tenant?.name}</p>
+      </div>
+
+      <nav className="flex-1 space-y-6 overflow-y-auto px-3">
+        <div className="space-y-0.5">
+          {NAV_MAIN.map((item) => (
+            <NavItem key={item.to} {...item} />
+          ))}
         </div>
 
-        <nav className="mt-2 flex-1 space-y-6 px-4">
+        {isAdmin && (
           <div>
-            <p className="px-2 text-[11px] font-semibold uppercase tracking-wide text-ink/35">Navigation</p>
-            <div className="mt-2 space-y-1">
-              {NAV_MAIN.map(({ to, label, icon: Icon, end }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={end}
-                  className={({ isActive }) =>
-                    `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                      isActive ? "bg-brass/10 text-brass-dark" : "text-ink/60 hover:bg-ink/[0.04] hover:text-ink"
-                    }`
-                  }
-                >
-                  <Icon size={17} />
-                  <span className="flex-1">{label}</span>
-                  <ChevronRight size={14} className="opacity-0 transition-opacity group-hover:opacity-40" />
-                </NavLink>
+            <p className="px-3 pb-2 text-[11px] font-medium uppercase tracking-wider text-ink/40">Administration</p>
+            <div className="space-y-0.5">
+              {NAV_ADMIN.map((item) => (
+                <NavItem key={item.to} {...item} />
               ))}
             </div>
           </div>
+        )}
+      </nav>
 
-          {isAdmin && (
-            <div>
-              <p className="px-2 text-[11px] font-semibold uppercase tracking-wide text-ink/35">Administration</p>
-              <div className="mt-2 space-y-1">
-                {NAV_ADMIN.map(({ to, label, icon: Icon }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    className={({ isActive }) =>
-                      `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                        isActive ? "bg-brass/10 text-brass-dark" : "text-ink/60 hover:bg-ink/[0.04] hover:text-ink"
-                      }`
-                    }
-                  >
-                    <Icon size={17} />
-                    <span className="flex-1">{label}</span>
-                    <ChevronRight size={14} className="opacity-0 transition-opacity group-hover:opacity-40" />
-                  </NavLink>
-                ))}
-              </div>
+      <div className="border-t border-line p-3">
+        <a
+          href="mailto:support@archivix.example"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-ink/65 hover:bg-ink/[0.04] hover:text-ink"
+        >
+          <LifeBuoy size={17} /> Assistance
+        </a>
+
+        <div ref={menuRef} className="relative mt-1">
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-ink/[0.04]"
+          >
+            <Avatar name={user?.fullName} size={32} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium text-ink">{user?.fullName}</span>
+              <span className="block truncate text-xs text-ink/50">{ROLE_LABEL[user?.role] || user?.role}</span>
+            </span>
+            <ChevronsUpDown size={15} className="text-ink/35" />
+          </button>
+          {menuOpen && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-line bg-white p-1.5 shadow-pop">
+              <p className="truncate px-2.5 py-1.5 text-xs text-ink/50">{user?.email}</p>
+              <button
+                onClick={logout}
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-danger hover:bg-danger-light"
+              >
+                <LogOut size={15} /> Se déconnecter
+              </button>
             </div>
           )}
-        </nav>
-
-        <div className="p-4">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-warning to-danger p-5 text-white">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/25">
-              <HelpCircle size={18} />
-            </div>
-            <p className="mt-3 font-display text-sm font-semibold">Besoin d'aide ?</p>
-            <p className="mt-1 text-xs leading-relaxed text-white/85">
-              Une question sur votre registre ? Contactez votre administrateur ou notre support.
-            </p>
-            <a
-              href="mailto:support@archivix.example"
-              className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-white px-3 py-2 text-xs font-semibold text-ink hover:bg-white/90"
-            >
-              Contacter le support
-            </a>
-          </div>
         </div>
-      </aside>
+      </div>
+    </div>
+  );
 
-      <div className="flex flex-1 flex-col">
-        <header className="relative bg-gradient-to-r from-ink via-brass-dark to-brass px-6 py-5 md:px-8">
-          <div className="relative flex flex-wrap items-center gap-4">
-            <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl bg-white/15 px-3.5 py-2.5 text-white/80">
-              <Search size={16} />
-              <input
-                placeholder="Rechercher un document, un département…"
-                className="w-full bg-transparent text-sm text-white placeholder:text-white/60 outline-none"
-              />
-            </div>
+  return (
+    <div className="flex min-h-screen bg-paper-dim">
+      {/* Barre latérale fixe (écran large) */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-line bg-white lg:block">{sidebar}</aside>
 
-            <div className="hidden items-center gap-1 text-white/70 lg:flex">
-              <div className="relative z-30">
-                <button onClick={openNotifications} className="relative rounded-lg p-2 hover:bg-white/10 hover:text-white">
-                  <Bell size={17} />
-                  {unread > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[9px] font-bold text-white">
-                      {unread > 9 ? "9+" : unread}
-                    </span>
-                  )}
-                </button>
-                {notifOpen && (
-                  <div className="absolute right-0 top-11 max-h-96 w-80 overflow-y-auto rounded-xl border border-ink/10 bg-white p-2 text-ink shadow-lg">
-                    {notifications.length === 0 && <p className="p-3 text-sm text-ink/50">Aucune notification pour l'instant.</p>}
+      {/* Tiroir mobile */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="absolute inset-0 bg-ink/40" onClick={() => setDrawerOpen(false)} />
+          <aside className="animate-in absolute inset-y-0 left-0 w-72 max-w-[85%] bg-white shadow-pop">
+            <button
+              onClick={() => setDrawerOpen(false)}
+              className="icon-btn-neutral absolute right-3 top-4"
+              aria-label="Fermer le menu"
+            >
+              <X size={18} />
+            </button>
+            {sidebar}
+          </aside>
+        </div>
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-white/90 px-4 backdrop-blur sm:px-6 lg:px-8">
+          <button onClick={() => setDrawerOpen(true)} className="icon-btn-neutral lg:hidden" aria-label="Ouvrir le menu">
+            <Menu size={20} />
+          </button>
+
+          <form onSubmit={handleSearch} className="relative max-w-md flex-1">
+            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/40" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher un document, une référence…"
+              className="h-10 w-full rounded-lg border border-line bg-paper-dim/70 pl-9 pr-3 text-sm outline-none transition placeholder:text-ink/40 focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/10"
+            />
+          </form>
+
+          <div className="ml-auto flex items-center gap-1">
+            <div ref={notifRef} className="relative">
+              <button onClick={toggleNotifications} className="icon-btn-neutral relative h-10 w-10" aria-label="Notifications">
+                <Bell size={18} />
+                {unread > 0 && (
+                  <span className="absolute right-1.5 top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white">
+                    {unread > 9 ? "9+" : unread}
+                  </span>
+                )}
+              </button>
+              {notifOpen && (
+                <div className="absolute right-0 top-12 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-line bg-white shadow-pop">
+                  <div className="border-b border-line px-4 py-3">
+                    <p className="text-sm font-semibold">Notifications</p>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length === 0 && (
+                      <p className="px-4 py-8 text-center text-sm text-ink/50">Aucune notification pour le moment.</p>
+                    )}
                     {notifications.map((n) => (
-                      <div key={n.id} className={`rounded-lg p-3 text-sm ${n.isRead ? "" : "bg-brass/5"}`}>
-                        <p className="text-ink/80">{n.message}</p>
-                        <p className="mt-1 text-xs text-ink/40">{new Date(n.createdAt).toLocaleString("fr-FR")}</p>
+                      <div key={n.id} className="flex gap-3 border-b border-line px-4 py-3 last:border-0">
+                        <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.isRead ? "bg-transparent" : "bg-brand"}`} />
+                        <div className="min-w-0">
+                          <p className="text-sm text-ink/80">{n.message}</p>
+                          <p className="mt-0.5 text-xs text-ink/45">{new Date(n.createdAt).toLocaleString("fr-FR")}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-              <button className="rounded-lg p-2 hover:bg-white/10 hover:text-white">
-                <MoreVertical size={17} />
-              </button>
-            </div>
-
-            <div className="hidden items-center gap-5 text-sm font-medium text-white/85 lg:flex">
-              <Link to="/app/documents" className="hover:text-white">Documents</Link>
-              <Link to="/app/departements" className="hover:text-white">Départements</Link>
-            </div>
-
-            <div className="relative z-30 ml-auto flex items-center gap-3">
-              <span className="hidden text-sm text-white/90 sm:inline">Bonjour, {user?.fullName?.split(" ")[0]}</span>
-              <button
-                onClick={() => setMenuOpen((o) => !o)}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-xs font-semibold text-white"
-              >
-                {initials}
-              </button>
-              {menuOpen && (
-                <div className="absolute right-0 top-11 w-48 rounded-xl border border-ink/10 bg-white p-2 text-ink shadow-lg">
-                  <p className="truncate px-2 py-1 text-xs text-ink/50">{tenant?.name}</p>
-                  <button
-                    onClick={logout}
-                    className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-danger hover:bg-danger-light"
-                  >
-                    <LogOut size={15} /> Déconnexion
-                  </button>
                 </div>
               )}
+            </div>
+            <span className="mx-2 hidden h-6 w-px bg-line sm:block" />
+            <div className="hidden items-center gap-2.5 sm:flex">
+              <Avatar name={user?.fullName} size={32} />
+              <span className="hidden text-sm font-medium text-ink/80 md:inline">{user?.fullName}</span>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 px-6 py-8 md:px-10">
-          <div className="animate-in">
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div className="animate-in mx-auto max-w-7xl">
             <Outlet />
           </div>
         </main>

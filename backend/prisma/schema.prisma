@@ -1,4 +1,4 @@
-// Schéma de base de données Archivix — PostgreSQL (ex : Supabase, gratuit et permanent).
+// Schéma de base de données Archivix — PostgreSQL (hébergé sur Neon).
 // Documentation : https://www.prisma.io/docs
 
 generator client {
@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")          // connexion "poolée" (application)
+  directUrl = env("DATABASE_URL_UNPOOLED") // connexion directe (migrations Prisma)
 }
 
 model Tenant {
@@ -21,6 +22,12 @@ model Tenant {
   storageUsedMb         Float     @default(0)
   isActive              Boolean   @default(true)
   subscriptionExpiresAt DateTime?
+  // Stockage des documents : "archivix" (Supabase / disque) ou "google_drive" (Drive de l'organisation)
+  storageProvider        String    @default("archivix")
+  googleDriveEmail       String?
+  googleDriveRefreshToken String?  // chiffré (AES-256-GCM), jamais renvoyé au navigateur
+  googleDriveFolderId    String?
+  googleDriveConnectedAt DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -73,6 +80,7 @@ model Department {
   name        String
   description String?
   createdById String
+  googleDriveFolderId String? // sous-dossier du département dans le Drive de l'organisation
   createdAt   DateTime @default(now())
 
   members   User[]
@@ -127,6 +135,8 @@ model Document {
   sharedWithDepartments String @default("[]")
   fileName     String
   fileUrl      String
+  storageProvider String     @default("archivix") // où le fichier est réellement stocké
+  storageKey   String?     // identifiant du fichier dans Google Drive
   mimeType     String
   sizeKb       Float
   uploadedById String

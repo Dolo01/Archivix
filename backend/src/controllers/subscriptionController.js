@@ -1,6 +1,6 @@
 const prisma = require("../config/prisma");
 const { PLANS, OFFRES_DEMANDABLES } = require("../utils/plans");
-const { saveFile } = require("../utils/storage");
+const { saveFile, displayUrl } = require("../utils/storage");
 
 // Coordonnées de paiement affichées à l'entreprise (comptes de l'exploitant de la plateforme)
 exports.coordonnees = (req, res) => {
@@ -69,5 +69,6 @@ exports.history = async (req, res) => {
     where: { tenantId: req.tenantId },
     orderBy: { createdAt: "desc" },
   });
-  res.json(requests);
+  const withLinks = await Promise.all(requests.map(async (r) => ({ ...r, captureUrl: await displayUrl(r.captureUrl) })));
+  res.json(withLinks);
 };

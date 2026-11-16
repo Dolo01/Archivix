@@ -2,28 +2,31 @@
 
 Ce guide utilise deux services gratuits, sans carte bancaire requise pour démarrer :
 
-- **Supabase** → base de données PostgreSQL + stockage des fichiers (permanent, gratuit, ne s'efface jamais)
+- **Neon** → base de données PostgreSQL + stockage des fichiers (gratuit, permanent)
 - **Render** → backend (Web Service) **et** frontend (Static Site), les deux gratuits
 
 Tout se pilote depuis un seul tableau de bord Render, avec des adresses du type `xxxx.onrender.com` — pas besoin de nom de domaine pour tester.
 
 ---
 
-## 1. Base de données + stockage (Supabase)
+## 1. Base de données + stockage des fichiers (Neon)
 
-1. Va sur https://supabase.com → crée un compte gratuit → **New project**.
-2. Choisis un mot de passe pour la base (note-le, tu en as besoin juste après) et une région proche (Europe de l'Ouest si possible).
-3. Une fois le projet créé, va dans **Project Settings → Database → Connection string → URI**. Copie-la : elle ressemble à
-   ```
-   postgresql://postgres.xxxxx:[TON-MOT-DE-PASSE]@aws-0-xxxx.pooler.supabase.com:6543/postgres
-   ```
-   Remplace `[TON-MOT-DE-PASSE]` par le mot de passe choisi à l'étape 2. **C'est ta variable `DATABASE_URL`.**
-4. Va dans **Storage** (menu de gauche) → **New bucket** → nomme-le `archivix` → coche **Public bucket** → crée-le.
-5. Va dans **Project Settings → API** :
-   - Copie **Project URL** → c'est `SUPABASE_URL`
-   - Copie la clé **service_role** (pas la clé `anon` !) → c'est `SUPABASE_SERVICE_ROLE_KEY`. Cette clé est secrète, ne la mets jamais dans le frontend.
+Neon fournit la base PostgreSQL **et** le stockage des fichiers (compatible S3), avec une offre gratuite généreuse (jusqu'à 100 projets, 1 Go de base et 5 Go de fichiers par projet).
 
-> Pourquoi Supabase et pas la base gratuite de Render : la base Postgres gratuite de Render s'auto-détruit 30 jours après sa création (+14 jours de sursis pour passer en payant). Celle de Supabase, elle, reste gratuite sans expiration. On garde donc Render uniquement pour le code (backend + frontend), qui lui n'a pas ce problème.
+1. Va sur https://neon.com → crée un compte gratuit → **New project** :
+   - nom : `archivix` ;
+   - région : **AWS Europe Central 1 (Frankfurt)** (la plus proche du Mali parmi celles qui proposent le stockage de fichiers) ;
+   - nom de la base : `archivix`.
+2. Clique **Connect** :
+   - copie la chaîne de connexion **poolée** (le nom d'hôte contient `-pooler`) et ajoute à la fin `&pgbouncer=true&connect_timeout=15` → c'est `DATABASE_URL` ;
+   - décoche « Connection pooling » pour obtenir la chaîne **directe** (sans `-pooler`), ajoute `&connect_timeout=15` → c'est `DATABASE_URL_UNPOOLED` (utilisée par Prisma pour les migrations).
+3. Toujours dans **Connect**, onglet **Storage** : crée un bucket nommé `archivix` en accès **privé**, puis récupère `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID` et `AWS_SECRET_ACCESS_KEY` (bouton **Reveal credential**). La clé secrète n'est affichée qu'une fois : copie-la tout de suite.
+
+🔒 Le bucket doit rester **privé** : Archivix ouvre chaque document avec un lien temporaire (5 minutes), délivré après vérification des droits de l'utilisateur.
+
+> Les tables sont créées automatiquement au déploiement par `npx prisma migrate deploy` (voir l'étape 2).
+
+> **Déjà sur Supabase ?** Archivix sait toujours lire les fichiers stockés sur Supabase : laisse `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` et `SUPABASE_BUCKET` renseignés le temps de migrer. Dès que les variables `AWS_*` sont présentes, les **nouveaux** fichiers partent sur Neon.
 
 ## 2. Backend (Render — Web Service)
 
@@ -35,9 +38,10 @@ Tout se pilote depuis un seul tableau de bord Render, avec des adresses du type 
    - **Start Command** : `node src/server.js`
    - **Instance Type** : Free
 4. Dans l'onglet **Environment**, ajoute toutes les variables de `backend/.env.example`, avec tes vraies valeurs :
-   - `DATABASE_URL` (celle de Supabase, étape 1.3)
-   - `JWT_SECRET` (invente une longue chaîne aléatoire)
-   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_BUCKET=archivix`
+   - `DATABASE_URL` et `DATABASE_URL_UNPOOLED` (étape 1.2)
+   - `JWT_SECRET` (longue chaîne aléatoire : `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`)
+   - `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `STORAGE_BUCKET=archivix` (étape 1.3)
+   - (optionnel) les variables `GOOGLE_*` : voir la section 6
    - `WAVE_NUMBER`, `ORANGE_MONEY_NUMBER`, `PAYMENT_BENEFICIARY_NAME`, `PAYMENT_BENEFICIARY_EMAIL`
    - `FRONTEND_URL` : laisse `http://localhost:5173` pour l'instant, tu la corrigeras à l'étape 4
 5. Clique **Create Web Service**. Render te donne une URL du type `https://archivix-backend.onrender.com`. Note-la.
@@ -76,14 +80,52 @@ Retourne dans ton **Web Service** (backend) → **Environment** → mets à jour
 ## 5. Tester
 
 - Va sur ton URL de Static Site → inscris une entreprise test → vérifie que l'essai de 14 jours s'affiche.
-- Archive un document → vérifie dans Supabase (**Storage → archivix**) que le fichier est bien apparu.
+- Archive un document → vérifie dans Neon (**Storage → archivix**) que le fichier est bien apparu, puis ouvre-le depuis Archivix (le lien doit contenir `X-Amz-Expires=300` et cesser de fonctionner après 5 minutes).
+- Dans les journaux Render, la ligne `Stockage des fichiers : Neon Object Storage (S3)` confirme la configuration.
 - Va sur `https://archivix-backend.onrender.com/api/health` pour un test rapide du backend.
 - Connecte-toi en super-admin sur `https://archivix-frontend.onrender.com/superadmin/connexion`.
 - Recharge la page sur une route profonde comme `/app/documents` pour vérifier que la règle de réécriture fonctionne (pas de 404).
+
+## 6. Option : stockage dans le Google Drive de chaque client
+
+Chaque organisation cliente peut connecter **son propre** Google Drive (menu **Paramètres**, réservé aux administrateurs). Ses documents y sont alors enregistrés, dans un dossier « Archivix — Nom de l'organisation » avec un sous-dossier par département. Tant que tu ne configures pas cette partie, le bouton reste désactivé et les fichiers sont stockés sur Neon.
+
+Archivix ne demande que l'autorisation `drive.file` : il n'accède qu'aux fichiers qu'il a lui-même créés, jamais au reste du Drive du client. Google classe cette autorisation comme « non sensible », ce qui allège sa vérification.
+
+### 6.1 Créer le projet et l'identifiant OAuth (gratuit)
+
+1. Va sur https://console.cloud.google.com → crée un projet (ex. « Archivix »).
+2. **API et services → Bibliothèque** → cherche **Google Drive API** → **Activer**.
+3. **Google Auth Platform** (anciennement « Écran de consentement OAuth ») :
+   - **Branding** : nom de l'application (« Archivix »), e-mail d'assistance, logo, lien vers la page d'accueil (`https://archivix-frontend.onrender.com`) et vers la politique de confidentialité (`https://archivix-frontend.onrender.com/confidentialite`, déjà intégrée à l'application ; pense à y remplacer l'adresse de contact dans `frontend/src/pages/Privacy.jsx`).
+   - **Audience** : type d'utilisateur **Externe**.
+   - **Data Access** (accès aux données) : ajoute l'autorisation `.../auth/drive.file`.
+4. **Google Auth Platform → Clients → Créer un client** :
+   - Type : **Application Web**
+   - **URI de redirection autorisés** : `https://archivix-backend.onrender.com/api/integrations/google-drive/callback` (remplace par l'URL de ton backend ; en local : `http://localhost:5000/api/integrations/google-drive/callback`).
+   - Récupère l'**ID client** et le **code secret du client**.
+
+### 6.2 Variables d'environnement du backend (Render → Environment)
+
+- `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` : les valeurs de l'étape 6.1
+- `GOOGLE_REDIRECT_URI` : exactement la même URI que celle déclarée chez Google
+- `GOOGLE_TOKEN_ENCRYPTION_KEY` : clé qui chiffre les autorisations Google enregistrées en base. Génère-la avec
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  ```
+  ⚠️ Garde-la précieusement et ne la change pas : si elle change, chaque client devra reconnecter son Drive.
+
+### 6.3 ⚠️ Publier l'application (indispensable)
+
+Tant que l'application est en statut **Test** (Google Auth Platform → **Audience**), seuls les comptes ajoutés comme testeurs (100 maximum) peuvent la connecter, et **leur autorisation expire au bout de 7 jours** : les clients verraient alors « reconnectez Google Drive » chaque semaine. Pour tes essais, ajoute ton propre compte comme testeur ; avant d'ouvrir l'option à tes clients, clique **Publier l'application** (statut **En production**) et suis la vérification demandée par Google.
+
+### 6.4 Tester
+
+Connecte-toi en administrateur d'une organisation → **Paramètres** → **Connecter Google Drive** → accepte l'autorisation → archive un document → vérifie qu'il apparaît dans le Drive, dans `Archivix — …/Nom du département/`.
 
 ## Limites du plan gratuit (à connaître)
 
 - Render free (Web Service) : mise en veille après inactivité (cold start ~30-60s), 750h/mois gratuites par workspace.
 - Render free (Static Site) : gratuit, sans limite de temps — pas de mise en veille.
-- Supabase free : 500 Mo de base de données, 1 Go de stockage de fichiers ; le projet peut être mis en pause après une longue inactivité (une simple visite du tableau de bord suffit à le relancer).
+- Neon free : 1 Go de base et 5 Go de fichiers par projet, 100 heures de calcul par mois et par projet. La base se met en veille après 5 minutes sans activité et se réveille à la requête suivante (quelques secondes). Si un quota mensuel est atteint, le projet est suspendu jusqu'au mois suivant, sans facturation.
 - Prévoir un passage en payant (quelques dollars/mois sur le Web Service) avant un vrai lancement commercial avec des clients qui paient — le gratuit est parfait pour tester et faire une démo.

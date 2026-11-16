@@ -1,21 +1,25 @@
 import { useEffect, useState } from "react";
-import { Smartphone, CheckCircle2, ShieldAlert, Clock, XCircle, Copy, Mail } from "lucide-react";
+import { Smartphone, CheckCircle2, ShieldAlert, Clock, XCircle, Copy, Mail, Check, Info } from "lucide-react";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
 import Modal from "../components/Modal.jsx";
+import PageHeader from "../components/ui/PageHeader.jsx";
+import Field from "../components/ui/Field.jsx";
 
 const STATUS_META = {
-  en_attente: { label: "En attente de vérification", color: "text-warning", icon: Clock },
-  approuve: { label: "Approuvé", color: "text-success-dark", icon: CheckCircle2 },
-  refuse: { label: "Refusé", color: "text-danger", icon: XCircle },
+  en_attente: { label: "En vérification", cls: "badge-warning", icon: Clock },
+  approuve: { label: "Approuvée", cls: "badge-success", icon: CheckCircle2 },
+  refuse: { label: "Refusée", cls: "badge-danger", icon: XCircle },
 };
 
-const PLAN_GRADIENTS = {
-  starter: "linear-gradient(135deg,#EDE9FE,#C4B5FD)",
-  pro: "linear-gradient(135deg,#FFE2D1,#FFB08A)",
-  business: "linear-gradient(135deg,#CFFAF9,#7BEFEA)",
-  entreprise: "linear-gradient(135deg,#D8F5DE,#8FE3A8)",
-};
+const PLAN_FEATURES = [
+  "Archivage, classement et recherche",
+  "Départements, dossiers et partages",
+  "Discussion sur chaque document",
+  "Support par email",
+];
+
+const PAYMENT_LABEL = { wave: "Wave", orange_money: "Orange Money" };
 
 export default function Billing() {
   const { tenant } = useAuth();
@@ -36,8 +40,18 @@ export default function Billing() {
     fetchHistory();
   }, []);
 
+  const [copied, setCopied] = useState(false);
+
   function copyNumber(numero) {
     navigator.clipboard?.writeText(numero);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  function openPlan(p) {
+    setError("");
+    setFeedback("");
+    setSelectedPlan(p);
   }
 
   async function handleSubmitRequest(e) {
@@ -71,154 +85,200 @@ export default function Billing() {
   const isExpired = expiry ? expiry < new Date() : true;
   const isTrial = tenant?.plan === "essai";
   const daysLeft = expiry ? Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24)) : null;
+  const numero = coordonnees
+    ? form.moyenPaiement === "wave" ? coordonnees.wave : coordonnees.orangeMoney
+    : null;
+
+  const statusBox = isExpired
+    ? { cls: "border-danger/25 bg-danger-light/50 text-danger-dark", icon: ShieldAlert,
+        text: expiry ? `Abonnement expiré le ${expiry.toLocaleDateString("fr-FR")}. Choisissez une offre pour continuer.` : "Aucun abonnement actif." }
+    : isTrial
+    ? { cls: "border-brand/20 bg-brand-50 text-brand-dark", icon: Info,
+        text: `Période d'essai : ${daysLeft} jour${daysLeft > 1 ? "s" : ""} restant${daysLeft > 1 ? "s" : ""}, jusqu'au ${expiry.toLocaleDateString("fr-FR")}.` }
+    : { cls: "border-success/25 bg-success-light/50 text-success-dark", icon: CheckCircle2,
+        text: `Offre ${coordonnees?.offres?.find((o) => o.id === tenant?.plan)?.label || tenant?.plan} active jusqu'au ${expiry.toLocaleDateString("fr-FR")}.` };
+  const StatusIcon = statusBox.icon;
 
   return (
-    <div>
-      <span className="label-eyebrow">Réservé à l'administrateur</span>
-      <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">Facturation & abonnement</h1>
+    <div className="space-y-6">
+      <PageHeader title="Abonnement" subtitle="Choisissez l'offre adaptée à votre organisation. Facturation annuelle." />
 
-      <div className={`mt-4 flex items-center gap-2 rounded-md px-3 py-2 text-sm ${isExpired ? "bg-danger-light text-danger-dark" : isTrial ? "bg-info-light text-info-dark" : "bg-success-light text-success-dark"}`}>
-        {isExpired ? <ShieldAlert size={16} /> : <CheckCircle2 size={16} />}
-        {isTrial && !isExpired && `Essai gratuit — il vous reste ${daysLeft} jour(s), jusqu'au ${expiry.toLocaleDateString("fr-FR")}`}
-        {!isTrial && expiry && !isExpired && `Offre ${tenant?.plan} active jusqu'au ${expiry.toLocaleDateString("fr-FR")}`}
-        {isExpired && `Abonnement expiré le ${expiry?.toLocaleDateString("fr-FR")}. Choisissez une offre ci-dessous pour continuer.`}
+      <div className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm ${statusBox.cls}`}>
+        <StatusIcon size={17} className="shrink-0" /> {statusBox.text}
       </div>
 
-      <div className="card mt-6 p-6">
-        <h2 className="font-display text-lg font-semibold">Comment s'abonner ou se réabonner</h2>
-        <ol className="mt-3 space-y-2 text-sm text-ink/70">
-          <li>1. Choisissez une offre ci-dessous (facturation annuelle) et effectuez le dépôt via Wave ou Orange Money au numéro affiché.</li>
-          <li>2. Indiquez le numéro que vous avez utilisé pour le dépôt et la référence de la transaction.</li>
-          <li>3. Joignez si possible une capture d'écran du reçu.</li>
-          <li>4. Votre demande est examinée par l'administrateur de la plateforme, qui l'approuve ou la refuse.</li>
-        </ol>
-      </div>
-
-      <div className="mt-6 grid gap-5 md:grid-cols-4">
-        {coordonnees?.offres?.map((p) => (
-          <div key={p.id} className="rounded-2xl p-6 text-ink" style={{ background: PLAN_GRADIENTS[p.id] }}>
-            <h3 className="font-display text-lg font-semibold">{p.label}</h3>
-            <p className="mt-1 text-sm text-ink/60">{p.maxUsers ? `${p.maxUsers} utilisateurs` : "Utilisateurs illimités"}</p>
-            <p className="mt-3">
-              {p.surDevis ? (
-                <span className="font-display text-2xl font-semibold">Sur devis</span>
-              ) : (
-                <>
-                  <span className="font-display text-2xl font-semibold">{p.prixAnnuel.toLocaleString("fr-FR")}</span>
-                  <span className="text-sm text-ink/50"> FCFA/an</span>
-                </>
-              )}
-            </p>
-            {p.surDevis ? (
-              <a
-                href={`mailto:${coordonnees.contactEntreprise}?subject=Offre Enterprise Archivix`}
-                className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white shadow-card hover:bg-ink-light"
-              >
-                <Mail size={15} /> Nous contacter
-              </a>
-            ) : (
-              <button
-                onClick={() => setSelectedPlan(p)}
-                disabled={tenant?.plan === p.id}
-                className="mt-5 w-full rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white shadow-card hover:bg-ink-light disabled:bg-ink/20 disabled:text-ink/40"
-              >
-                {tenant?.plan === p.id ? "Offre actuelle" : `Demander ${p.label}`}
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div className="card mt-8 p-6">
-        <h2 className="font-display text-lg font-semibold">Historique des demandes</h2>
-        <div className="mt-4 divide-y divide-ink/10">
-          {history.length === 0 && <p className="py-4 text-sm text-ink/50">Aucune demande envoyée pour l'instant.</p>}
-          {history.map((h) => {
-            const meta = STATUS_META[h.status] || STATUS_META.en_attente;
-            const Icon = meta.icon;
-            return (
-              <div key={h.id} className="flex items-center justify-between py-3 text-sm">
-                <div>
-                  <p className="font-medium capitalize">{h.plan} — {h.montant.toLocaleString("fr-FR")} FCFA/an ({h.moyenPaiement === "wave" ? "Wave" : "Orange Money"})</p>
-                  <p className="text-xs text-ink/45">{new Date(h.createdAt).toLocaleDateString("fr-FR")} · réf. {h.reference}</p>
-                  {h.status === "refuse" && h.motifRefus && <p className="text-xs text-danger">Motif : {h.motifRefus}</p>}
-                </div>
-                <span className={`flex items-center gap-1.5 font-mono text-xs ${meta.color}`}>
-                  <Icon size={13} /> {meta.label}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {coordonnees?.offres?.map((p) => {
+          const current = tenant?.plan === p.id;
+          const featured = p.id === "pro";
+          return (
+            <div key={p.id} className={`card relative flex flex-col p-6 ${featured ? "border-brand ring-1 ring-brand" : ""}`}>
+              {featured && (
+                <span className="absolute -top-2.5 left-6 rounded-full bg-brand px-2.5 py-0.5 text-[11px] font-semibold text-white">
+                  Recommandé
                 </span>
-              </div>
-            );
-          })}
-        </div>
+              )}
+              <h3 className="text-base font-semibold">{p.label}</h3>
+              <p className="mt-0.5 text-sm text-ink/55">{p.maxUsers ? `Jusqu'à ${p.maxUsers} utilisateurs` : "Utilisateurs illimités"}</p>
+              <p className="mt-5">
+                {p.surDevis ? (
+                  <span className="text-2xl font-semibold tracking-tight">Sur devis</span>
+                ) : (
+                  <>
+                    <span className="text-3xl font-semibold tracking-tight tabular-nums">{p.prixAnnuel.toLocaleString("fr-FR")}</span>
+                    <span className="text-sm text-ink/50"> FCFA / an</span>
+                  </>
+                )}
+              </p>
+              <ul className="mt-5 flex-1 space-y-2 text-sm text-ink/70">
+                {PLAN_FEATURES.map((f) => (
+                  <li key={f} className="flex gap-2"><Check size={16} className="mt-0.5 shrink-0 text-brand" /> {f}</li>
+                ))}
+                {p.surDevis && <li className="flex gap-2"><Check size={16} className="mt-0.5 shrink-0 text-brand" /> Accompagnement dédié</li>}
+              </ul>
+              {p.surDevis ? (
+                <a href={`mailto:${coordonnees.contactEntreprise}?subject=Offre Enterprise Archivix`} className="btn-secondary mt-6 w-full">
+                  <Mail size={15} /> Nous contacter
+                </a>
+              ) : (
+                <button
+                  onClick={() => openPlan(p)}
+                  disabled={current}
+                  className={`${featured ? "btn-primary" : "btn-secondary"} mt-6 w-full`}
+                >
+                  {current ? "Offre actuelle" : `Choisir ${p.label}`}
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      <Modal open={!!selectedPlan} onClose={() => setSelectedPlan(null)} title={`Demande d'abonnement — ${selectedPlan?.label}`}>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <section className="card p-6">
+          <h2 className="card-title">Comment s'abonner</h2>
+          <ol className="mt-4 space-y-4">
+            {[
+              "Choisissez une offre et effectuez le dépôt par Wave ou Orange Money au numéro indiqué.",
+              "Renseignez le numéro utilisé et la référence de la transaction.",
+              "Joignez si possible une capture du reçu.",
+              "Votre demande est vérifiée puis votre abonnement est activé.",
+            ].map((t, i) => (
+              <li key={i} className="flex gap-3 text-sm text-ink/70">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-dark">{i + 1}</span>
+                {t}
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="card overflow-hidden lg:col-span-2">
+          <div className="card-header">
+            <h2 className="card-title">Historique des demandes</h2>
+          </div>
+          {history.length === 0 ? (
+            <p className="px-5 py-10 text-center text-sm text-ink/50">Aucune demande envoyée pour l'instant.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Offre</th>
+                    <th className="text-right">Montant</th>
+                    <th className="hidden sm:table-cell">Paiement</th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((h) => {
+                    const meta = STATUS_META[h.status] || STATUS_META.en_attente;
+                    const Icon = meta.icon;
+                    return (
+                      <tr key={h.id}>
+                        <td className="whitespace-nowrap text-ink/65">{new Date(h.createdAt).toLocaleDateString("fr-FR")}</td>
+                        <td>
+                          <p className="font-medium capitalize">{h.plan}</p>
+                          <p className="font-mono text-xs text-ink/45">réf. {h.reference}</p>
+                          {h.status === "refuse" && h.motifRefus && <p className="text-xs text-danger">Motif : {h.motifRefus}</p>}
+                        </td>
+                        <td className="whitespace-nowrap text-right tabular-nums">{h.montant.toLocaleString("fr-FR")} FCFA</td>
+                        <td className="hidden text-ink/65 sm:table-cell">{PAYMENT_LABEL[h.moyenPaiement] || h.moyenPaiement}</td>
+                        <td><span className={meta.cls}><Icon size={12} /> {meta.label}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <Modal
+        open={!!selectedPlan}
+        onClose={() => setSelectedPlan(null)}
+        title={`Souscrire à l'offre ${selectedPlan?.label || ""}`}
+        description={selectedPlan?.prixAnnuel ? `${selectedPlan.prixAnnuel.toLocaleString("fr-FR")} FCFA pour 12 mois` : undefined}
+      >
         <form onSubmit={handleSubmitRequest} className="space-y-4">
-          <div>
-            <label className="label-eyebrow">Moyen de paiement</label>
-            <div className="mt-1.5 grid grid-cols-2 gap-2">
+          <Field label="Moyen de paiement">
+            <div className="grid grid-cols-2 gap-2">
               {["wave", "orange_money"].map((m) => (
                 <button
                   type="button"
                   key={m}
                   onClick={() => setForm({ ...form, moyenPaiement: m })}
-                  className={`rounded-xl border-2 px-3 py-2.5 text-sm font-medium ${form.moyenPaiement === m ? "border-brass bg-brass/10 text-brass-dark" : "border-ink/15 text-ink/60"}`}
+                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                    form.moyenPaiement === m ? "border-brand bg-brand-50 text-brand-dark ring-1 ring-brand" : "border-line text-ink/65 hover:bg-paper-dim"
+                  }`}
                 >
-                  {m === "wave" ? "Wave" : "Orange Money"}
+                  {PAYMENT_LABEL[m]}
                 </button>
               ))}
             </div>
-          </div>
+          </Field>
 
-          {coordonnees && (
-            <div className="rounded-xl bg-ink/[0.04] p-4">
-              <p className="text-xs uppercase tracking-wide text-ink/50">Numéro pour le dépôt</p>
-              <div className="mt-1 flex items-center justify-between">
-                <p className="font-mono text-lg font-semibold">
-                  {form.moyenPaiement === "wave" ? coordonnees.wave.numero : coordonnees.orangeMoney.numero}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => copyNumber(form.moyenPaiement === "wave" ? coordonnees.wave.numero : coordonnees.orangeMoney.numero)}
-                  className="icon-btn-info"
-                  title="Copier"
-                >
-                  <Copy size={15} />
+          {numero && (
+            <div className="rounded-lg border border-line bg-paper-dim/60 p-4">
+              <p className="text-xs font-medium text-ink/50">Numéro de dépôt</p>
+              <div className="mt-1 flex items-center justify-between gap-3">
+                <p className="font-mono text-lg font-semibold tracking-wide">{numero.numero}</p>
+                <button type="button" onClick={() => copyNumber(numero.numero)} className="btn-secondary px-3 py-1.5 text-xs">
+                  {copied ? <><Check size={14} /> Copié</> : <><Copy size={14} /> Copier</>}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-ink/50">
-                Bénéficiaire : {form.moyenPaiement === "wave" ? coordonnees.wave.nomBeneficiaire : coordonnees.orangeMoney.nomBeneficiaire} · Montant : {selectedPlan?.prixAnnuel?.toLocaleString("fr-FR")} FCFA/an
+              <p className="mt-1 text-xs text-ink/55">
+                Bénéficiaire : {numero.nomBeneficiaire} · Montant : {selectedPlan?.prixAnnuel?.toLocaleString("fr-FR")} FCFA
               </p>
             </div>
           )}
 
-          <div>
-            <label className="label-eyebrow">Numéro utilisé pour le dépôt</label>
-            <input required className="input mt-1.5" placeholder="+223 75 14 89 49" value={form.numeroExpediteur} onChange={(e) => setForm({ ...form, numeroExpediteur: e.target.value })} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Numéro utilisé pour le dépôt">
+              <input required className="input" placeholder="+223 XX XX XX XX" value={form.numeroExpediteur} onChange={(e) => setForm({ ...form, numeroExpediteur: e.target.value })} />
+            </Field>
+            <Field label="Référence de la transaction">
+              <input required className="input" placeholder="Ex : WV-2026-889231" value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
+            </Field>
           </div>
-          <div>
-            <label className="label-eyebrow">Référence de la transaction</label>
-            <input required className="input mt-1.5" placeholder="Ex : WV-2026-889231" value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
-          </div>
-          <div>
-            <label className="label-eyebrow">Capture d'écran du reçu (optionnel)</label>
-            <label className="mt-1.5 flex cursor-pointer items-center justify-center gap-2 rounded-md border-2 border-dashed border-ink/20 px-4 py-5 text-sm text-ink/60 hover:border-brass">
+          <Field label="Capture du reçu (optionnel)">
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-ink/20 px-4 py-5 text-sm text-ink/60 hover:border-brand hover:bg-brand-50/40">
               <Smartphone size={16} />
-              {form.capture ? form.capture.name : "Joindre une capture (PNG, JPEG)"}
+              {form.capture ? form.capture.name : "Joindre une image (PNG, JPEG)"}
               <input type="file" accept="image/*" className="hidden" onChange={(e) => setForm({ ...form, capture: e.target.files[0] })} />
             </label>
+          </Field>
+
+          {error && <p className="alert-error">{error}</p>}
+          {feedback && <p className="alert-success"><CheckCircle2 size={15} /> {feedback}</p>}
+
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <button type="button" onClick={() => setSelectedPlan(null)} className="btn-secondary">Fermer</button>
+            <button type="submit" disabled={submitting} className="btn-primary">
+              {submitting ? "Envoi…" : "Envoyer la demande"}
+            </button>
           </div>
-
-          {error && <p className="rounded-md bg-danger-light px-3 py-2 text-sm text-danger-dark">{error}</p>}
-          {feedback && (
-            <p className="flex items-center gap-2 rounded-md bg-success-light px-3 py-2 text-sm text-success-dark">
-              <CheckCircle2 size={15} /> {feedback}
-            </p>
-          )}
-
-          <button type="submit" disabled={submitting} className="btn-success w-full">
-            {submitting ? "Envoi en cours…" : "Envoyer ma demande"}
-          </button>
         </form>
       </Modal>
     </div>

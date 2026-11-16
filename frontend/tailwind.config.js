@@ -4,60 +4,55 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Texte et surfaces sombres : bleu nuit, sobre et institutionnel
         ink: {
-          DEFAULT: "#1E1B2E",
-          light: "#2A2640",
-          soft: "#3A3459",
+          DEFAULT: "#0F172A",
+          light: "#1E293B",
+          soft: "#334155",
         },
+        // Fonds clairs
         paper: {
-          DEFAULT: "#F6F3EC",
-          dim: "#EDE8DB",
+          DEFAULT: "#FFFFFF",
+          dim: "#F6F7F9",
         },
-        brass: {
-          DEFAULT: "#8B5CF6",
-          dark: "#7C3AED",
-          light: "#DDD6FE",
+        // Couleur de marque unique
+        brand: {
+          DEFAULT: "#1D4ED8",
+          dark: "#1E40AF",
+          light: "#DBE6FE",
+          50: "#EFF4FF",
         },
-        stamp: {
-          DEFAULT: "#9C3B2E",
-          light: "#C05A46",
-        },
-        slate: {
-          950: "#161B22",
-        },
+        line: "#E4E7EC",
         success: {
-          DEFAULT: "#16A34A",
-          dark: "#15803D",
+          DEFAULT: "#15803D",
+          dark: "#166534",
           light: "#DCFCE7",
         },
         danger: {
-          DEFAULT: "#E11D48",
-          dark: "#BE123C",
-          light: "#FFE4E8",
+          DEFAULT: "#DC2626",
+          dark: "#B91C1C",
+          light: "#FEE2E2",
         },
         info: {
-          DEFAULT: "#2563EB",
-          dark: "#1D4ED8",
-          light: "#DBEAFE",
+          DEFAULT: "#0369A1",
+          dark: "#075985",
+          light: "#E0F2FE",
         },
         warning: {
-          DEFAULT: "#D97706",
-          dark: "#B45309",
+          DEFAULT: "#B45309",
+          dark: "#92400E",
           light: "#FEF3C7",
         },
       },
       fontFamily: {
-        display: ["Fraunces", "ui-serif", "Georgia", "serif"],
-        body: ["'IBM Plex Sans'", "ui-sans-serif", "system-ui", "sans-serif"],
-        mono: ["'IBM Plex Mono'", "ui-monospace", "monospace"],
+        display: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        body: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["'JetBrains Mono'", "ui-monospace", "monospace"],
       },
       boxShadow: {
-        card: "0 1px 2px rgba(30,27,46,0.08), 0 8px 24px -8px rgba(30,27,46,0.22)",
-        seal: "0 0 0 3px rgba(139,92,246,0.25)",
-      },
-      backgroundImage: {
-        ledger:
-          "repeating-linear-gradient(to bottom, transparent, transparent 39px, rgba(30,27,46,0.05) 40px)",
+        card: "0 1px 2px rgba(16,24,40,0.05)",
+        raised: "0 1px 3px rgba(16,24,40,0.08), 0 8px 24px -6px rgba(16,24,40,0.12)",
+        pop: "0 12px 32px -8px rgba(16,24,40,0.22), 0 2px 6px rgba(16,24,40,0.06)",
       },
     },
   },

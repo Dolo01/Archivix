@@ -3,6 +3,7 @@ import { Send } from "lucide-react";
 import api from "../api/client";
 import { getSocket } from "../api/socket";
 import { useAuth } from "../context/AuthContext.jsx";
+import Avatar from "./ui/Avatar.jsx";
 
 export default function DocumentChat({ documentId }) {
   const { user } = useAuth();
@@ -53,19 +54,34 @@ export default function DocumentChat({ documentId }) {
   }
 
   return (
-    <div className="flex h-96 flex-col">
-      <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+    <div className="flex h-[26rem] flex-col">
+      <div className="-mx-1 flex-1 space-y-3 overflow-y-auto px-1">
         {loading && <p className="text-sm text-ink/45">Chargement de la discussion…</p>}
         {!loading && messages.length === 0 && (
-          <p className="text-sm text-ink/45">Aucun message pour l'instant. Lancez la discussion sur ce dossier.</p>
+          <div className="flex h-full flex-col items-center justify-center text-center">
+            <p className="text-sm font-medium text-ink">Aucun message</p>
+            <p className="mt-1 text-sm text-ink/50">Échangez avec vos collègues à propos de ce document.</p>
+          </div>
         )}
         {messages.map((m) => {
-          const mine = m.author?.id === user?.id || m.author?.id === user?.id;
+          const mine = m.author?.id === user?.id;
           return (
-            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${mine ? "bg-ink text-paper" : "bg-ink/[0.06] text-ink"}`}>
-                {!mine && <p className="mb-0.5 font-mono text-[10px] uppercase text-ink/45">{m.author?.fullName}</p>}
-                <p>{m.content}</p>
+            <div key={m.id} className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+              {!mine && <Avatar name={m.author?.fullName} size={26} />}
+              <div className={`max-w-[78%] ${mine ? "items-end" : "items-start"} flex flex-col`}>
+                {!mine && <p className="mb-0.5 px-1 text-xs font-medium text-ink/55">{m.author?.fullName}</p>}
+                <div
+                  className={`rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
+                    mine ? "rounded-br-md bg-brand text-white" : "rounded-bl-md bg-paper-dim text-ink"
+                  }`}
+                >
+                  {m.content}
+                </div>
+                {m.createdAt && (
+                  <p className="mt-0.5 px-1 text-[11px] text-ink/40">
+                    {new Date(m.createdAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                  </p>
+                )}
               </div>
             </div>
           );
@@ -73,14 +89,14 @@ export default function DocumentChat({ documentId }) {
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={sendMessage} className="mt-3 flex items-center gap-2 border-t border-ink/10 pt-3">
+      <form onSubmit={sendMessage} className="mt-3 flex items-center gap-2 border-t border-line pt-3">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Écrire un message à propos de ce dossier…"
+          placeholder="Écrire un message…"
           className="input flex-1"
         />
-        <button type="submit" className="btn-brass px-3.5">
+        <button type="submit" disabled={!text.trim()} className="btn-primary px-3" aria-label="Envoyer">
           <Send size={16} />
         </button>
       </form>

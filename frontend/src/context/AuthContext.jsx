@@ -30,6 +30,14 @@ export function AuthProvider({ children }) {
     setTenant(tenant);
   }
 
+  // Recharge l'organisation (ex. après la connexion de Google Drive)
+  async function refreshTenant() {
+    const { data } = await api.get("/auth/me");
+    setUser(data.user);
+    setTenant(data.tenant);
+    return data.tenant;
+  }
+
   function logout() {
     localStorage.removeItem("archivix_token");
     setUser(null);
@@ -37,7 +45,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, tenant, loading, loginSuccess, logout }}>
+    <AuthContext.Provider value={{ user, tenant, loading, loginSuccess, logout, refreshTenant }}>
       {children}
     </AuthContext.Provider>
   );
