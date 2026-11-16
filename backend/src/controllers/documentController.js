@@ -3,7 +3,7 @@ const { notifyDepartmentMembers } = require("../utils/notify");
 const jwt = require("jsonwebtoken");
 const { Readable } = require("stream");
 const fs = require("fs");
-const { saveFile, useSupabase, pathFromUrl, signedSupabaseUrl, localFilePath } = require("../utils/storage");
+const { saveFile, pathFromUrl, temporaryUrl, localFilePath, deleteFile, kindOf } = require("../utils/storage");
 const drive = require("../utils/googleDrive");
 
 // Renvoie (en le créant au besoin) le sous-dossier Drive du département.
@@ -249,6 +249,16 @@ exports.remove = async (req, res) => {
 
   await prisma.message.deleteMany({ where: { documentId: doc.id } });
   await prisma.document.delete({ where: { id: doc.id } });
+
+  // Stockage Archivix : on supprime aussi le fichier et on libère l'espace du quota.
+  if (doc.storageProvider !== "google_drive") {
+    await deleteFile(doc.fileUrl);
+    const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
+    await prisma.tenant.update({
+      where: { id: req.tenantId },
+      data: { storageUsedMb: Math.max(0, tenant.storageUsedMb - doc.sizeKb / 1024) },
+    });
+  }
   res.json({ message: "Document supprimé." });
 };
 
@@ -259,13 +269,11 @@ exports.link = async (req, res) => {
   const doc = await prisma.document.findFirst({ where: { ...where, id: req.params.id } });
   if (!doc) return res.status(404).json({ message: "Document introuvable ou accès non autorisé." });
 
-  // Stockage Supabase : lien temporaire généré par Supabase (bucket privé).
-  const isLocalFile = doc.fileUrl.startsWith("/uploads/");
-  if (doc.storageProvider !== "google_drive" && !isLocalFile && useSupabase) {
-    const objectPath = doc.storageKey || pathFromUrl(doc.fileUrl);
-    if (!objectPath) return res.json({ url: doc.fileUrl });
+  // Stockage objet (Neon S3 ou Supabase) : lien temporaire signé par le service de stockage.
+  if (doc.storageProvider !== "google_drive" && kindOf(doc.fileUrl) !== "local") {
     try {
-      return res.json({ url: await signedSupabaseUrl(objectPath, 300) });
+      const url = await temporaryUrl(doc.fileUrl, { seconds: 300, fileName: doc.fileName, mimeType: doc.mimeType });
+      if (url) return res.json({ url });
     } catch (err) {
       return res.status(502).json({ message: "Impossible d'ouvrir ce document pour le moment.", error: err.message });
     }
@@ -278,7 +286,7 @@ exports.link = async (req, res) => {
   res.json({ url: `/api/documents/${doc.id}/fichier?jeton=${encodeURIComponent(jeton)}` });
 };
 
-// Diffuse le fichier depuis le Drive de l'organisation (route publique protégée par le lien signé).
+// Diffuse un fichier Google Drive ou stocké sur le disque local (route publique protégée par le lien signé).
 exports.streamFile = async (req, res) => {
   let payload;
   try {

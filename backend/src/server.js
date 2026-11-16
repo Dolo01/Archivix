@@ -10,6 +10,7 @@ const path = require("path");
 const rateLimit = require("express-rate-limit");
 
 const prisma = require("./config/prisma");
+const { storageName } = require("./utils/storage");
 const authRoutes = require("./routes/authRoutes");
 const documentRoutes = require("./routes/documentRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
@@ -99,5 +100,6 @@ app.set("io", io);
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
   console.log(`[Archivix] API + Socket.io démarrés sur le port ${PORT}`);
-  console.log(`[Archivix] Base de données PostgreSQL via Prisma connectée`);
+  console.log(`[Archivix] Base de données PostgreSQL via Prisma`);
+  console.log(`[Archivix] Stockage des fichiers : ${storageName()}`);
 });

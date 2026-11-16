@@ -148,7 +148,7 @@ export default function Privacy() {
           <Section id="hebergement" title="5. Hébergement et sous-traitants">
             <List
               items={[
-                <><strong>Supabase</strong> : base de données et stockage des fichiers des organisations qui n'ont pas connecté Google Drive.</>,
+                <><strong>Neon</strong> : base de données et stockage des fichiers des organisations qui n'ont pas connecté Google Drive (serveurs situés à Francfort, Allemagne).</>,
                 <><strong>Render</strong> : hébergement de l'application et du serveur.</>,
                 <><strong>Google</strong> : stockage des fichiers des organisations qui ont connecté leur Google Drive.</>,
               ]}

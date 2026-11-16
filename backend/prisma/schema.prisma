@@ -1,4 +1,4 @@
-// Schéma de base de données Archivix — PostgreSQL (ex : Supabase, gratuit et permanent).
+// Schéma de base de données Archivix — PostgreSQL (hébergé sur Neon).
 // Documentation : https://www.prisma.io/docs
 
 generator client {
@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")          // connexion "poolée" (application)
+  directUrl = env("DATABASE_URL_UNPOOLED") // connexion directe (migrations Prisma)
 }
 
 model Tenant {
