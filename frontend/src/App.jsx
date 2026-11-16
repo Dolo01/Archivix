@@ -17,8 +17,8 @@ function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-paper">
-        <div className="label-eyebrow animate-pulse">Chargement d'Archivix…</div>
+      <div className="flex h-screen items-center justify-center bg-paper-dim">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand/20 border-t-brand" aria-label="Chargement" />
       </div>
     );
   }
@@ -36,8 +36,8 @@ function SuperAdminRoute({ children }) {
   const { admin, loading } = useSuperAdmin();
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-ink text-white">
-        <div className="label-eyebrow animate-pulse">Chargement…</div>
+      <div className="flex h-screen items-center justify-center bg-paper-dim">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand/20 border-t-brand" aria-label="Chargement" />
       </div>
     );
   }

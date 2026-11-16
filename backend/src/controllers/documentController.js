@@ -64,12 +64,18 @@ exports.list = async (req, res) => {
   const { q, category, status, department, folder, page = 1, limit = 20 } = req.query;
   const where = await buildScopeWhere(req);
 
+  // La recherche doit s'AJOUTER au périmètre d'accès (AND), jamais l'élargir :
+  // la fusionner dans le OR du périmètre exposerait les documents des autres départements.
   if (q) {
-    where.OR = [
-      ...(where.OR || []),
-      { title: { contains: q } },
-      { reference: { contains: q } },
-      { tags: { contains: q } },
+    where.AND = [
+      ...(where.AND || []),
+      {
+        OR: [
+          { title: { contains: q, mode: "insensitive" } },
+          { reference: { contains: q, mode: "insensitive" } },
+          { tags: { contains: q, mode: "insensitive" } },
+        ],
+      },
     ];
   }
   if (category) where.categoryId = category;

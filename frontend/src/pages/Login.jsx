@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
+import AuthLayout from "../components/AuthLayout.jsx";
+import Field from "../components/ui/Field.jsx";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { loginSuccess } = useAuth();
@@ -27,51 +31,48 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center overflow-y-auto bg-paper px-6 py-12">
-      <div className="w-full max-w-sm">
-        <Link to="/" className="inline-flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-ink to-brass text-white font-display text-sm font-semibold">A</div>
-          <span className="font-display text-lg font-semibold">Archivix</span>
-        </Link>
-        <h1 className="mt-6 font-display text-2xl font-semibold">Se connecter à votre registre</h1>
-        <p className="mt-1 text-sm text-ink/60">Accédez aux archives de votre entreprise.</p>
-
-        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-          <div>
-            <label className="label-eyebrow">Email professionnel</label>
+    <AuthLayout
+      title="Connexion"
+      subtitle="Accédez à l'espace documentaire de votre organisation."
+      footer={
+        <>
+          Pas encore de compte ?{" "}
+          <Link to="/inscription" className="font-semibold text-brand hover:text-brand-dark">Créer un espace</Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Field label="Email professionnel">
+          <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input" placeholder="vous@organisation.com" />
+        </Field>
+        <Field label="Mot de passe">
+          <div className="relative">
             <input
-              type="email"
+              type={showPassword ? "text" : "password"}
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="input mt-1.5"
-              placeholder="vous@entreprise.com"
-            />
-          </div>
-          <div>
-            <label className="label-eyebrow">Mot de passe</label>
-            <input
-              type="password"
-              required
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="input mt-1.5"
+              className="input pr-10"
               placeholder="••••••••"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-ink/40 hover:text-ink"
+              aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
+        </Field>
 
-          {error && <p className="rounded-md bg-danger-light px-3 py-2 text-sm text-danger-dark">{error}</p>}
+        {error && <p className="alert-error">{error}</p>}
 
-          <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? "Connexion…" : "Se connecter"}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-ink/60">
-          Pas encore de registre ?{" "}
-          <Link to="/inscription" className="font-semibold text-brass-dark">Créer mon entreprise</Link>
-        </p>
-      </div>
-    </div>
+        <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
+          {loading ? "Connexion…" : "Se connecter"}
+        </button>
+      </form>
+    </AuthLayout>
   );
 }

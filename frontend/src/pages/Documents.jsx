@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
-  Search, UploadCloud, Plus, MessageCircle, Pencil, Trash2, Printer, Share2,
-  FolderPlus, Folder, X,
+  Search, UploadCloud, Plus, MessageSquare, Pencil, Trash2, ExternalLink, Share2,
+  FolderPlus, Folder, FolderOpen, FileText, ChevronLeft, ChevronRight, Users,
 } from "lucide-react";
 import api from "../api/client";
 import SealBadge from "../components/SealBadge.jsx";
 import Modal from "../components/Modal.jsx";
 import DocumentChat from "../components/DocumentChat.jsx";
+import PageHeader from "../components/ui/PageHeader.jsx";
+import EmptyState from "../components/ui/EmptyState.jsx";
+import Field from "../components/ui/Field.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const STATUTS = [
@@ -15,16 +19,52 @@ const STATUTS = [
   { value: "archive_definitif", label: "Définitif" },
 ];
 
+const PAGE_SIZE = 20;
+
+function formatSize(kb) {
+  if (kb == null) return "—";
+  return kb < 1024 ? `${Math.round(kb)} Ko` : `${(kb / 1024).toFixed(1)} Mo`;
+}
+
+function ShareList({ departments, excludeId, selected, onToggle }) {
+  const options = departments.filter((d) => d.id !== excludeId);
+  if (options.length === 0) {
+    return <p className="text-sm text-ink/50">Créez un autre département pour activer le partage.</p>;
+  }
+  return (
+    <div className="divide-y divide-line overflow-hidden rounded-lg border border-line">
+      {options.map((d) => (
+        <label key={d.id} className="flex cursor-pointer items-center gap-3 px-4 py-3 text-sm hover:bg-paper-dim/60">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-line accent-brand"
+            checked={selected.includes(d.id)}
+            onChange={() => onToggle(d.id)}
+          />
+          <span className="flex-1 font-medium">{d.name}</span>
+          <span className="text-xs text-ink/45">{d.membres} membre{d.membres > 1 ? "s" : ""}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export default function Documents() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const canManage = isAdmin || user?.role === "gestionnaire";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlQuery = searchParams.get("q") || "";
 
   const [documents, setDocuments] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(1);
+  const [page, setPage] = useState(1);
   const [departments, setDepartments] = useState([]);
   const [folders, setFolders] = useState([]);
   const [activeFolder, setActiveFolder] = useState(null); // null = tous les documents
-  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [query, setQuery] = useState(urlQuery);
   const [loading, setLoading] = useState(true);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -42,16 +82,25 @@ export default function Documents() {
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
 
-  function fetchDocuments(q = "", folderId = activeFolder) {
+  function fetchDocuments(q = urlQuery, folderId = activeFolder, status = statusFilter, p = page) {
     setLoading(true);
-    const params = {};
+    const params = { page: p, limit: PAGE_SIZE };
     if (q) params.q = q;
     if (folderId) params.folder = folderId;
+    if (status) params.status = status;
     api
       .get("/documents", { params })
-      .then(({ data }) => setDocuments(data.documents))
+      .then(({ data }) => {
+        setDocuments(data.documents);
+        setTotal(data.total);
+        setPages(Math.max(1, data.pages || 1));
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
+  }
+
+  function refresh() {
+    fetchDocuments(urlQuery, activeFolder, statusFilter, page);
   }
 
   function fetchFolders() {
@@ -59,19 +108,40 @@ export default function Documents() {
   }
 
   useEffect(() => {
-    fetchDocuments();
     fetchFolders();
     api.get("/departments").then(({ data }) => setDepartments(data)).catch(() => {});
   }, []);
 
+  // La recherche vit dans l'URL (?q=…) : la barre du haut et celle de la page restent synchronisées.
   useEffect(() => {
-    fetchDocuments(query, activeFolder);
+    setQuery(urlQuery);
+  }, [urlQuery]);
+
+  useEffect(() => {
+    fetchDocuments(urlQuery, activeFolder, statusFilter, page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFolder]);
+  }, [urlQuery, activeFolder, statusFilter, page]);
 
   function handleSearch(e) {
     e.preventDefault();
-    fetchDocuments(query, activeFolder);
+    setPage(1);
+    const q = query.trim();
+    setSearchParams(q ? { q } : {});
+  }
+
+  function selectFolder(id) {
+    setPage(1);
+    setActiveFolder(id);
+  }
+
+  function selectStatus(value) {
+    setPage(1);
+    setStatusFilter(value);
+  }
+
+  function closeModal(setter) {
+    setError("");
+    setter(null);
   }
 
   function toggleShareTarget(id) {
@@ -87,7 +157,10 @@ export default function Documents() {
     setError("");
     const files = Array.from(fileList);
     if (!files.length) return;
-    if (isAdmin && !form.department) return setError("Choisissez le département de destination.");
+    if (isAdmin && !form.department) {
+      setModalOpen(true);
+      return setError("Choisissez le département de destination.");
+    }
     setSubmitting(true);
     try {
       for (const file of files) {
@@ -103,7 +176,8 @@ export default function Documents() {
       }
       setModalOpen(false);
       setForm({ title: "", reference: "", tags: "", file: null, department: "", folderId: "", sharedWithDepartments: [] });
-      fetchDocuments(query, activeFolder);
+      refresh();
+      fetchFolders();
     } catch (err) {
       setError(err.response?.data?.message || "Échec de l'archivage d'un ou plusieurs documents.");
     } finally {
@@ -118,6 +192,7 @@ export default function Documents() {
   }
 
   function openEdit(doc) {
+    setError("");
     setEditDoc(doc);
     setEditForm({
       title: doc.title,
@@ -139,7 +214,7 @@ export default function Documents() {
         tags: editForm.tags.split(",").map((t) => t.trim()).filter(Boolean),
       });
       setEditDoc(null);
-      fetchDocuments(query, activeFolder);
+      refresh();
     } catch (err) {
       setError(err.response?.data?.message || "Échec de la modification du document.");
     } finally {
@@ -151,14 +226,11 @@ export default function Documents() {
     if (!window.confirm(`Supprimer définitivement « ${doc.title} » ? Cette action est irréversible.`)) return;
     try {
       await api.delete(`/documents/${doc.id}`);
-      fetchDocuments(query, activeFolder);
+      refresh();
+      fetchFolders();
     } catch (err) {
       alert(err.response?.data?.message || "Échec de la suppression.");
     }
-  }
-
-  function handlePrint(doc) {
-    window.open(doc.fileUrl, "_blank", "noopener,noreferrer");
   }
 
   async function toggleDocShare(targetId) {
@@ -210,7 +282,7 @@ export default function Documents() {
       await api.delete(`/folders/${folder.id}`);
       if (activeFolder === folder.id) setActiveFolder(null);
       fetchFolders();
-      fetchDocuments(query, null);
+      refresh();
     } catch (err) {
       alert(err.response?.data?.message || "Échec de la suppression du dossier.");
     }
@@ -228,336 +300,419 @@ export default function Documents() {
     }
   }
 
-  return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <span className="label-eyebrow">Registre</span>
-          <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">Documents archivés</h1>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => setFolderModalOpen(true)} className="btn-outline">
-            <FolderPlus size={16} /> Nouveau dossier
-          </button>
-          <button onClick={() => setModalOpen(true)} className="btn-primary">
-            <Plus size={16} /> Archiver un document
-          </button>
-        </div>
-      </div>
+  const currentFolder = folders.find((f) => f.id === activeFolder);
+  const totalInFolders = folders.reduce((s, f) => s + (f.documentsCount || 0), 0);
 
-      {/* Dossiers */}
-      <div className="mt-5 flex flex-wrap gap-2">
-        <button
-          onClick={() => setActiveFolder(null)}
-          className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
-            activeFolder === null ? "bg-ink text-white" : "bg-white text-ink/60 hover:bg-ink/5"
-          }`}
-        >
-          Tous les documents
-        </button>
-        {folders.map((f) => (
-          <div
-            key={f.id}
-            className={`group flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
-              activeFolder === f.id ? "bg-brass text-white" : "bg-white text-ink/60 hover:bg-ink/5"
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Documents"
+        subtitle="Archivez, classez et retrouvez les documents de votre organisation."
+        actions={
+          canManage && (
+            <>
+              <button onClick={() => { setError(""); setFolderModalOpen(true); }} className="btn-secondary">
+                <FolderPlus size={16} /> Nouveau dossier
+              </button>
+              <button onClick={() => { setError(""); setModalOpen(true); }} className="btn-primary">
+                <Plus size={16} /> Archiver
+              </button>
+            </>
+          )
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+        {/* Arborescence des dossiers */}
+        <aside className="card h-fit p-2">
+          <p className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-ink/40">Dossiers</p>
+          <button
+            onClick={() => selectFolder(null)}
+            className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm font-medium ${
+              activeFolder === null ? "bg-brand-50 text-brand-dark" : "text-ink/70 hover:bg-ink/[0.04]"
             }`}
           >
-            <button onClick={() => setActiveFolder(f.id)} className="flex items-center gap-1.5">
-              <Folder size={14} /> {f.name} <span className="opacity-60">({f.documentsCount})</span>
-            </button>
-            {canManage && (
-              <span className="ml-1 hidden items-center gap-1 group-hover:flex">
-                <button onClick={() => setShareFolder(f)} title="Partager ce dossier"><Share2 size={12} /></button>
-                <button onClick={() => setEditFolder(f)} title="Renommer"><Pencil size={12} /></button>
-                <button onClick={() => handleDeleteFolder(f)} title="Supprimer"><X size={12} /></button>
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <form onSubmit={handleSearch} className="mt-5 flex max-w-md items-center gap-2">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/40" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher par titre, référence, mot-clé…"
-            className="input pl-9"
-          />
-        </div>
-        <button type="submit" className="btn-outline">Rechercher</button>
-      </form>
-
-      {/* Zone de glisser-déposer */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragOver(false);
-          if (e.dataTransfer.files?.length) submitFiles(e.dataTransfer.files);
-        }}
-        className={`mt-4 rounded-2xl border-2 border-dashed p-4 text-center text-sm transition-colors ${
-          dragOver ? "border-brass bg-brass/5 text-brass-dark" : "border-ink/15 text-ink/40"
-        }`}
-      >
-        Glissez-déposez un ou plusieurs fichiers ici pour les archiver directement{activeFolder ? " dans ce dossier" : ""}.
-      </div>
-
-      <div className="card mt-4 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-ink/10 bg-ink/[0.03] text-left">
-              <th className="px-5 py-3 font-medium text-ink/60">Statut</th>
-              <th className="px-5 py-3 font-medium text-ink/60">Titre</th>
-              <th className="px-5 py-3 font-medium text-ink/60">Département</th>
-              <th className="px-5 py-3 font-medium text-ink/60">Référence</th>
-              <th className="px-5 py-3 font-medium text-ink/60">Taille</th>
-              <th className="px-5 py-3 font-medium text-ink/60">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-ink/10">
-            {loading && (
-              <tr><td colSpan={6} className="px-5 py-8 text-center text-ink/50">Chargement du registre…</td></tr>
-            )}
-            {!loading && documents.length === 0 && (
-              <tr><td colSpan={6} className="px-5 py-8 text-center text-ink/50">Aucun document ne correspond à votre recherche.</td></tr>
-            )}
-            {documents.map((doc) => (
-              <tr key={doc.id} className="hover:bg-ink/[0.02]">
-                <td className="px-5 py-3"><SealBadge status={doc.status} /></td>
-                <td className="px-5 py-3">
-                  <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="font-medium hover:text-brass-dark">
-                    {doc.title}
-                  </a>
-                  <div className="flex flex-wrap gap-1 text-xs text-ink/40">
-                    {doc.folder && <span>dossier : {doc.folder.name}</span>}
-                    {doc.sharedWithDepartments?.length > 0 && (
-                      <span>· partagé avec {doc.sharedWithDepartments.map((d) => d.name).join(", ")}</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-5 py-3 text-ink/60">{doc.department?.name || "—"}</td>
-                <td className="px-5 py-3 font-mono text-xs text-ink/60">{doc.reference || "—"}</td>
-                <td className="px-5 py-3 text-ink/60">{(doc.sizeKb / 1024).toFixed(2)} Mo</td>
-                <td className="px-5 py-3">
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => setChatDoc(doc)} title="Discuter" className="icon-btn-info">
-                      <MessageCircle size={15} />
-                    </button>
-                    <button onClick={() => handlePrint(doc)} title="Imprimer" className="icon-btn-neutral">
-                      <Printer size={15} />
-                    </button>
-                    {canManage && (
-                      <>
-                        <button onClick={() => setShareDoc(doc)} title="Partager" className="icon-btn-brass">
-                          <Share2 size={15} />
-                        </button>
-                        <button onClick={() => openEdit(doc)} title="Modifier" className="icon-btn-info">
-                          <Pencil size={15} />
-                        </button>
-                        <button onClick={() => handleDelete(doc)} title="Supprimer" className="icon-btn-danger">
-                          <Trash2 size={15} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Archivage */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Archiver un ou plusieurs documents">
-        <form onSubmit={handleUpload} className="space-y-4">
-          <div>
-            <label className="label-eyebrow">Titre (si un seul fichier)</label>
-            <input className="input mt-1.5" placeholder="Ex : Contrat de bail — Siège" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          </div>
-
-          {isAdmin && (
-            <div>
-              <label className="label-eyebrow">Département de destination</label>
-              <select required className="input mt-1.5" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
-                <option value="">Choisir un département</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className="label-eyebrow">Dossier (optionnel)</label>
-            <select className="input mt-1.5" value={form.folderId} onChange={(e) => setForm({ ...form, folderId: e.target.value })}>
-              <option value="">{activeFolder ? folders.find((f) => f.id === activeFolder)?.name : "Aucun dossier"}</option>
-              {folders.map((f) => (
-                <option key={f.id} value={f.id}>{f.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="label-eyebrow">Partager également avec (optionnel)</label>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {departments.map((d) => (
-                <label key={d.id} className="flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1 text-xs">
-                  <input type="checkbox" checked={form.sharedWithDepartments.includes(d.id)} onChange={() => toggleShareTarget(d.id)} />
-                  {d.name}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="label-eyebrow">Référence interne</label>
-            <input className="input mt-1.5" placeholder="Ex : AX-2026-00417" value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
-          </div>
-          <div>
-            <label className="label-eyebrow">Mots-clés (séparés par des virgules)</label>
-            <input className="input mt-1.5" placeholder="contrat, siège, 2026" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
-          </div>
-          <div>
-            <label className="label-eyebrow">Fichier(s)</label>
-            <label className="mt-1.5 flex cursor-pointer items-center justify-center gap-2 rounded-md border-2 border-dashed border-ink/20 px-4 py-6 text-sm text-ink/60 hover:border-brass">
-              <UploadCloud size={18} />
-              {form.file?.length ? `${form.file.length} fichier(s) sélectionné(s)` : "Choisir un ou plusieurs fichiers (PDF, image, Word, Excel)"}
-              <input type="file" multiple className="hidden" onChange={(e) => setForm({ ...form, file: e.target.files })} />
-            </label>
-          </div>
-
-          {error && <p className="rounded-md bg-danger-light px-3 py-2 text-sm text-danger-dark">{error}</p>}
-
-          <button type="submit" disabled={submitting} className="btn-success w-full">
-            {submitting ? "Archivage en cours…" : "Archiver ces documents"}
+            <FileText size={16} /> <span className="flex-1">Tous les documents</span>
           </button>
-        </form>
-      </Modal>
+          {folders.map((f) => {
+            const active = activeFolder === f.id;
+            const Icon = active ? FolderOpen : Folder;
+            return (
+              <div
+                key={f.id}
+                className={`group flex items-center rounded-md ${active ? "bg-brand-50 text-brand-dark" : "text-ink/70 hover:bg-ink/[0.04]"}`}
+              >
+                <button onClick={() => selectFolder(f.id)} className="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2 text-left text-sm font-medium">
+                  <Icon size={16} className="shrink-0" />
+                  <span className="truncate">{f.name}</span>
+                  {f.sharedWithDepartmentIds?.length > 0 && <Users size={12} className="shrink-0 opacity-50" />}
+                </button>
+                <span className="pr-2 text-xs tabular-nums text-ink/40 group-hover:hidden">{f.documentsCount}</span>
+                {canManage && (
+                  <span className="hidden items-center pr-1 group-hover:flex">
+                    <button onClick={() => setShareFolder(f)} title="Partager" className="icon-btn-brand h-7 w-7"><Share2 size={13} /></button>
+                    <button onClick={() => { setError(""); setEditFolder(f); }} title="Renommer" className="icon-btn-neutral h-7 w-7"><Pencil size={13} /></button>
+                    <button onClick={() => handleDeleteFolder(f)} title="Supprimer" className="icon-btn-danger h-7 w-7"><Trash2 size={13} /></button>
+                  </span>
+                )}
+              </div>
+            );
+          })}
+          {folders.length === 0 && <p className="px-3 py-2 text-xs text-ink/45">Aucun dossier créé.</p>}
+          {folders.length > 0 && (
+            <p className="border-t border-line px-3 pb-1 pt-2 text-xs text-ink/40">{totalInFolders} document(s) classé(s)</p>
+          )}
+        </aside>
 
-      {/* Modification */}
-      <Modal open={!!editDoc} onClose={() => setEditDoc(null)} title={`Modifier — ${editDoc?.title || ""}`}>
-        <form onSubmit={handleEdit} className="space-y-4">
-          <div>
-            <label className="label-eyebrow">Titre</label>
-            <input required className="input mt-1.5" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
-          </div>
-          <div>
-            <label className="label-eyebrow">Référence interne</label>
-            <input className="input mt-1.5" value={editForm.reference} onChange={(e) => setEditForm({ ...editForm, reference: e.target.value })} />
-          </div>
-          <div>
-            <label className="label-eyebrow">Mots-clés (séparés par des virgules)</label>
-            <input className="input mt-1.5" value={editForm.tags} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })} />
-          </div>
-          <div>
-            <label className="label-eyebrow">Statut</label>
-            <select className="input mt-1.5" value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}>
+        <div className="min-w-0 space-y-4">
+          {/* Barre d'outils */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <form onSubmit={handleSearch} className="relative flex-1">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/40" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Titre, référence, mot-clé… puis Entrée"
+                className="input pl-9"
+              />
+            </form>
+            <select value={statusFilter} onChange={(e) => selectStatus(e.target.value)} className="input sm:w-48">
+              <option value="">Tous les statuts</option>
               {STATUTS.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
           </div>
 
-          {error && <p className="rounded-md bg-danger-light px-3 py-2 text-sm text-danger-dark">{error}</p>}
+          {urlQuery && (
+            <div className="flex items-center gap-2 text-sm text-ink/60">
+              Résultats pour <span className="font-medium text-ink">« {urlQuery} »</span>
+              <button onClick={() => { setPage(1); setSearchParams({}); }} className="font-medium text-brand hover:underline">
+                Effacer
+              </button>
+            </div>
+          )}
 
-          <button type="submit" disabled={submitting} className="btn-success w-full">
-            {submitting ? "Enregistrement…" : "Enregistrer les modifications"}
-          </button>
+          {/* Zone de glisser-déposer */}
+          {canManage && (
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                if (e.dataTransfer.files?.length) submitFiles(e.dataTransfer.files);
+              }}
+              className={`flex items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-4 text-sm transition-colors ${
+                dragOver ? "border-brand bg-brand-50 text-brand-dark" : "border-ink/20 bg-white text-ink/50"
+              }`}
+            >
+              <UploadCloud size={18} />
+              {submitting
+                ? "Archivage en cours…"
+                : `Déposez vos fichiers ici pour les archiver${currentFolder ? ` dans « ${currentFolder.name} »` : ""}`}
+            </div>
+          )}
+
+          <div className="card overflow-hidden">
+            <div className="flex items-center justify-between border-b border-line px-5 py-3">
+              <p className="text-sm font-semibold">{currentFolder ? currentFolder.name : "Tous les documents"}</p>
+              <p className="text-xs text-ink/50">{total} document{total > 1 ? "s" : ""}</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Document</th>
+                    <th>Statut</th>
+                    <th className="hidden 2xl:table-cell">Département</th>
+                    <th className="hidden 2xl:table-cell">Ajouté le</th>
+                    <th className="text-right">Taille</th>
+                    <th className="w-0"><span className="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading &&
+                    [0, 1, 2, 3].map((i) => (
+                      <tr key={i}>
+                        <td colSpan={6}><div className="h-8 animate-pulse rounded bg-ink/[0.04]" /></td>
+                      </tr>
+                    ))}
+                  {!loading &&
+                    documents.map((doc) => (
+                      <tr key={doc.id}>
+                        <td className="max-w-[300px]">
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-paper-dim text-ink/50">
+                              <FileText size={16} />
+                            </span>
+                            <div className="min-w-0">
+                              <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="block truncate font-medium hover:text-brand">
+                                {doc.title}
+                              </a>
+                              <p className="truncate text-xs text-ink/45">
+                                {doc.department?.name && <span className="2xl:hidden">{doc.department.name} · </span>}
+                                {doc.reference && <span className="font-mono">{doc.reference} · </span>}
+                                {doc.folder ? doc.folder.name : "Hors dossier"}
+                                {doc.sharedWithDepartments?.length > 0 &&
+                                  ` · partagé avec ${doc.sharedWithDepartments.map((d) => d.name).join(", ")}`}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td><SealBadge status={doc.status} /></td>
+                        <td className="hidden whitespace-nowrap text-ink/65 2xl:table-cell">{doc.department?.name || "—"}</td>
+                        <td className="hidden whitespace-nowrap text-ink/60 2xl:table-cell">
+                          {new Date(doc.createdAt).toLocaleDateString("fr-FR")}
+                        </td>
+                        <td className="whitespace-nowrap text-right tabular-nums text-ink/60">{formatSize(doc.sizeKb)}</td>
+                        <td>
+                          <div className="flex items-center justify-end gap-0.5">
+                            <button onClick={() => setChatDoc(doc)} title="Discussion" className="icon-btn-info"><MessageSquare size={15} /></button>
+                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" title="Ouvrir / imprimer" className="icon-btn-neutral">
+                              <ExternalLink size={15} />
+                            </a>
+                            {canManage && (
+                              <>
+                                <button onClick={() => setShareDoc(doc)} title="Partager" className="icon-btn-brand"><Share2 size={15} /></button>
+                                <button onClick={() => openEdit(doc)} title="Modifier" className="icon-btn-neutral"><Pencil size={15} /></button>
+                                <button onClick={() => handleDelete(doc)} title="Supprimer" className="icon-btn-danger"><Trash2 size={15} /></button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+
+            {!loading && documents.length === 0 && (
+              <EmptyState
+                icon={FileText}
+                title={urlQuery || statusFilter ? "Aucun résultat" : "Aucun document ici"}
+                text={
+                  urlQuery || statusFilter
+                    ? "Essayez d'autres mots-clés ou retirez les filtres."
+                    : "Archivez un document ou déposez des fichiers dans la zone ci-dessus."
+                }
+              />
+            )}
+
+            {pages > 1 && (
+              <div className="flex items-center justify-between border-t border-line px-5 py-3 text-sm">
+                <span className="text-ink/55">Page {page} sur {pages}</span>
+                <div className="flex gap-2">
+                  <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="btn-secondary px-3 py-1.5">
+                    <ChevronLeft size={15} /> Précédente
+                  </button>
+                  <button disabled={page >= pages} onClick={() => setPage((p) => p + 1)} className="btn-secondary px-3 py-1.5">
+                    Suivante <ChevronRight size={15} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Archivage */}
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Archiver des documents"
+        description="Ajoutez un ou plusieurs fichiers au registre."
+      >
+        <form onSubmit={handleUpload} className="space-y-4">
+          <Field label="Fichier(s)">
+            <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-ink/20 px-4 py-6 text-center text-sm text-ink/60 hover:border-brand hover:bg-brand-50/40">
+              <UploadCloud size={22} className="text-ink/40" />
+              <span className="font-medium text-ink">
+                {form.file?.length ? `${form.file.length} fichier(s) sélectionné(s)` : "Cliquez pour choisir des fichiers"}
+              </span>
+              <span className="text-xs">PDF, images, Word, Excel</span>
+              <input type="file" multiple className="hidden" onChange={(e) => setForm({ ...form, file: e.target.files })} />
+            </label>
+          </Field>
+
+          <Field label="Titre" hint="Utilisé si vous n'envoyez qu'un seul fichier ; sinon, le nom de chaque fichier est repris.">
+            <input className="input" placeholder="Ex : Contrat de bail — Siège" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {isAdmin && (
+              <Field label="Département">
+                <select required className="input" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
+                  <option value="">Choisir…</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            <Field label="Dossier">
+              <select className="input" value={form.folderId} onChange={(e) => setForm({ ...form, folderId: e.target.value })}>
+                <option value="">{currentFolder ? currentFolder.name : "Aucun dossier"}</option>
+                {folders.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Référence interne">
+              <input className="input" placeholder="Ex : AX-2026-00417" value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
+            </Field>
+            <Field label="Mots-clés" hint="Séparés par des virgules">
+              <input className="input" placeholder="contrat, siège, 2026" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
+            </Field>
+          </div>
+
+          {departments.length > 1 && (
+            <Field label="Partager aussi avec (optionnel)">
+              <div className="flex flex-wrap gap-2">
+                {departments.map((d) => {
+                  const on = form.sharedWithDepartments.includes(d.id);
+                  return (
+                    <button
+                      type="button"
+                      key={d.id}
+                      onClick={() => toggleShareTarget(d.id)}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                        on ? "border-brand bg-brand-50 text-brand-dark" : "border-line text-ink/60 hover:bg-paper-dim"
+                      }`}
+                    >
+                      {d.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          )}
+
+          {error && <p className="alert-error">{error}</p>}
+
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Annuler</button>
+            <button type="submit" disabled={submitting} className="btn-primary">
+              {submitting ? "Archivage en cours…" : "Archiver"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modification */}
+      <Modal open={!!editDoc} onClose={() => closeModal(setEditDoc)} title="Modifier le document" description={editDoc?.title}>
+        <form onSubmit={handleEdit} className="space-y-4">
+          <Field label="Titre">
+            <input required className="input" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Référence interne">
+              <input className="input" value={editForm.reference} onChange={(e) => setEditForm({ ...editForm, reference: e.target.value })} />
+            </Field>
+            <Field label="Statut">
+              <select className="input" value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}>
+                {STATUTS.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <Field label="Mots-clés" hint="Séparés par des virgules">
+            <input className="input" value={editForm.tags} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })} />
+          </Field>
+
+          {error && <p className="alert-error">{error}</p>}
+
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <button type="button" onClick={() => closeModal(setEditDoc)} className="btn-secondary">Annuler</button>
+            <button type="submit" disabled={submitting} className="btn-primary">
+              {submitting ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          </div>
         </form>
       </Modal>
 
       {/* Partage individuel du document */}
-      <Modal open={!!shareDoc} onClose={() => setShareDoc(null)} title={`Partager — ${shareDoc?.title || ""}`}>
-        <p className="text-sm text-ink/60">
-          Choisissez les départements qui auront accès à ce document précis, en plus du département propriétaire.
-        </p>
-        <div className="mt-4 space-y-2">
-          {departments
-            .filter((d) => d.id !== shareDoc?.department?.id)
-            .map((d) => {
-              const checked = (shareDoc?.sharedWithDepartmentIds || []).includes(d.id);
-              return (
-                <label key={d.id} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={checked} onChange={() => toggleDocShare(d.id)} />
-                  {d.name}
-                </label>
-              );
-            })}
-          {departments.length <= 1 && <p className="text-sm text-ink/40">Créez un autre département pour activer le partage.</p>}
-        </div>
+      <Modal
+        open={!!shareDoc}
+        onClose={() => setShareDoc(null)}
+        title="Partager le document"
+        description="Les départements cochés pourront consulter ce document, en plus de son département propriétaire."
+      >
+        <ShareList
+          departments={departments}
+          excludeId={shareDoc?.department?.id}
+          selected={shareDoc?.sharedWithDepartmentIds || []}
+          onToggle={toggleDocShare}
+        />
+        <p className="mt-3 text-xs text-ink/45">Les modifications sont enregistrées immédiatement.</p>
       </Modal>
 
       {/* Création de dossier */}
-      <Modal open={folderModalOpen} onClose={() => setFolderModalOpen(false)} title="Créer un dossier">
+      <Modal open={folderModalOpen} onClose={() => setFolderModalOpen(false)} title="Nouveau dossier">
         <form onSubmit={handleCreateFolder} className="space-y-4">
           {isAdmin && (
-            <div>
-              <label className="label-eyebrow">Département</label>
-              <select required className="input mt-1.5" value={folderForm.departmentId} onChange={(e) => setFolderForm({ ...folderForm, departmentId: e.target.value })}>
+            <Field label="Département">
+              <select required className="input" value={folderForm.departmentId} onChange={(e) => setFolderForm({ ...folderForm, departmentId: e.target.value })}>
                 <option value="">Choisir un département</option>
                 {departments.map((d) => (
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
-            </div>
+            </Field>
           )}
-          <div>
-            <label className="label-eyebrow">Nom du dossier</label>
-            <input required className="input mt-1.5" placeholder="Ex : Contrats 2026" value={folderForm.name} onChange={(e) => setFolderForm({ ...folderForm, name: e.target.value })} />
+          <Field label="Nom du dossier">
+            <input required className="input" placeholder="Ex : Contrats 2026" value={folderForm.name} onChange={(e) => setFolderForm({ ...folderForm, name: e.target.value })} />
+          </Field>
+          <Field label="Description (optionnel)">
+            <input className="input" value={folderForm.description} onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })} />
+          </Field>
+          {error && <p className="alert-error">{error}</p>}
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <button type="button" onClick={() => setFolderModalOpen(false)} className="btn-secondary">Annuler</button>
+            <button type="submit" disabled={submitting} className="btn-primary">
+              {submitting ? "Création…" : "Créer le dossier"}
+            </button>
           </div>
-          <div>
-            <label className="label-eyebrow">Description (optionnel)</label>
-            <input className="input mt-1.5" value={folderForm.description} onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })} />
-          </div>
-          {error && <p className="rounded-md bg-danger-light px-3 py-2 text-sm text-danger-dark">{error}</p>}
-          <button type="submit" disabled={submitting} className="btn-success w-full">
-            {submitting ? "Création…" : "Créer ce dossier"}
-          </button>
         </form>
       </Modal>
 
       {/* Renommer un dossier */}
-      <Modal open={!!editFolder} onClose={() => setEditFolder(null)} title="Modifier le dossier">
+      <Modal open={!!editFolder} onClose={() => closeModal(setEditFolder)} title="Modifier le dossier">
         <form onSubmit={handleRenameFolder} className="space-y-4">
-          <div>
-            <label className="label-eyebrow">Nom du dossier</label>
-            <input required className="input mt-1.5" value={editFolder?.name || ""} onChange={(e) => setEditFolder({ ...editFolder, name: e.target.value })} />
+          <Field label="Nom du dossier">
+            <input required className="input" value={editFolder?.name || ""} onChange={(e) => setEditFolder({ ...editFolder, name: e.target.value })} />
+          </Field>
+          <Field label="Description">
+            <input className="input" value={editFolder?.description || ""} onChange={(e) => setEditFolder({ ...editFolder, description: e.target.value })} />
+          </Field>
+          {error && <p className="alert-error">{error}</p>}
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <button type="button" onClick={() => closeModal(setEditFolder)} className="btn-secondary">Annuler</button>
+            <button type="submit" disabled={submitting} className="btn-primary">
+              {submitting ? "Enregistrement…" : "Enregistrer"}
+            </button>
           </div>
-          <div>
-            <label className="label-eyebrow">Description</label>
-            <input className="input mt-1.5" value={editFolder?.description || ""} onChange={(e) => setEditFolder({ ...editFolder, description: e.target.value })} />
-          </div>
-          {error && <p className="rounded-md bg-danger-light px-3 py-2 text-sm text-danger-dark">{error}</p>}
-          <button type="submit" disabled={submitting} className="btn-success w-full">
-            {submitting ? "Enregistrement…" : "Enregistrer"}
-          </button>
         </form>
       </Modal>
 
       {/* Partage d'un dossier (jamais du département entier) */}
-      <Modal open={!!shareFolder} onClose={() => setShareFolder(null)} title={`Partager le dossier — ${shareFolder?.name || ""}`}>
-        <p className="text-sm text-ink/60">
-          Choisissez les départements qui pourront consulter tous les documents de ce dossier.
-        </p>
-        <div className="mt-4 space-y-2">
-          {departments
-            .filter((d) => d.id !== shareFolder?.departmentId)
-            .map((d) => {
-              const checked = (shareFolder?.sharedWithDepartmentIds || []).includes(d.id);
-              return (
-                <label key={d.id} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={checked} onChange={() => toggleFolderShare(d.id)} />
-                  {d.name}
-                </label>
-              );
-            })}
-        </div>
+      <Modal
+        open={!!shareFolder}
+        onClose={() => setShareFolder(null)}
+        title={`Partager « ${shareFolder?.name || ""} »`}
+        description="Les départements cochés pourront consulter tous les documents de ce dossier."
+      >
+        <ShareList
+          departments={departments}
+          excludeId={shareFolder?.departmentId}
+          selected={shareFolder?.sharedWithDepartmentIds || []}
+          onToggle={toggleFolderShare}
+        />
+        <p className="mt-3 text-xs text-ink/45">Les modifications sont enregistrées immédiatement.</p>
       </Modal>
 
-      <Modal open={!!chatDoc} onClose={() => setChatDoc(null)} title={`Discussion — ${chatDoc?.title || ""}`}>
+      <Modal open={!!chatDoc} onClose={() => setChatDoc(null)} title="Discussion" description={chatDoc?.title}>
         {chatDoc && <DocumentChat documentId={chatDoc.id} />}
       </Modal>
     </div>
