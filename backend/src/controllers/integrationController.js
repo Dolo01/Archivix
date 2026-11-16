@@ -15,6 +15,7 @@ exports.status = async (req, res) => {
   });
   res.json({
     configured: drive.isConfigured(),
+    missingSettings: drive.missingSettings(),
     connected: tenant.storageProvider === "google_drive" && Boolean(tenant.googleDriveRefreshToken),
     email: tenant.googleDriveEmail,
     connectedAt: tenant.googleDriveConnectedAt,
