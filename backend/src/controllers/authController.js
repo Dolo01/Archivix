@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const prisma = require("../config/prisma");
-const { ESSAI_DUREE_JOURS } = require("../utils/plans");
+const { ESSAI_DUREE_JOURS, PLANS } = require("../utils/plans");
 
 function signToken(user) {
   return jwt.sign({ sub: user.id, tenant: user.tenantId }, process.env.JWT_SECRET, {
@@ -28,6 +28,7 @@ function tenantResponse(tenant) {
     storageUsedMb: tenant.storageUsedMb,
     storageQuotaMb: tenant.storageQuotaMb,
     storageProvider: tenant.storageProvider,
+    features: (PLANS[tenant.plan] || PLANS.essai).features,
     googleDriveEmail: tenant.storageProvider === "google_drive" ? tenant.googleDriveEmail : null,
   };
 }
@@ -52,7 +53,7 @@ exports.register = async (req, res) => {
     trialExpiresAt.setDate(trialExpiresAt.getDate() + ESSAI_DUREE_JOURS);
 
     const tenant = await prisma.tenant.create({
-      data: { name: companyName, slug, plan: "essai", subscriptionExpiresAt: trialExpiresAt },
+      data: { name: companyName, slug, plan: "essai", subscriptionExpiresAt: trialExpiresAt, storageQuotaMb: PLANS.essai.quotaMb },
     });
 
     const passwordHash = await bcrypt.hash(password, 10);

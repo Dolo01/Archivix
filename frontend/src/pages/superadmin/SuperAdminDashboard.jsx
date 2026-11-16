@@ -11,6 +11,7 @@ import Avatar from "../../components/ui/Avatar.jsx";
 import StatCard from "../../components/ui/StatCard.jsx";
 import EmptyState from "../../components/ui/EmptyState.jsx";
 import Field from "../../components/ui/Field.jsx";
+import { planLabel, dureeLabel } from "../../utils/plans.js";
 
 const JOURS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
@@ -122,7 +123,6 @@ export default function SuperAdminDashboard() {
     fetchTenants();
   }
 
-  const PLAN_LABEL = { essai: "Essai", starter: "Starter", pro: "Pro", business: "Business", entreprise: "Enterprise" };
 
   function go(key) {
     setView(key);
@@ -283,7 +283,7 @@ export default function SuperAdminDashboard() {
                                 <p className="font-mono text-xs text-ink/45">réf. {r.reference}</p>
                                 {r.status === "refuse" && r.motifRefus && <p className="text-xs text-danger">Motif : {r.motifRefus}</p>}
                               </td>
-                              <td className="capitalize">{PLAN_LABEL[r.plan] || r.plan}</td>
+                              <td>{planLabel(r.plan)}<p className="text-xs text-ink/45">{dureeLabel(r.dureeMois)}</p></td>
                               <td className="whitespace-nowrap text-right tabular-nums">{r.montant.toLocaleString("fr-FR")} FCFA</td>
                               <td className="hidden text-ink/65 md:table-cell">
                                 {r.moyenPaiement === "wave" ? "Wave" : "Orange Money"}
@@ -353,7 +353,7 @@ export default function SuperAdminDashboard() {
                             <td className="hidden text-ink/60 md:table-cell">
                               {t._count.users} membres · {t._count.departments} dép. · {t._count.documents} docs
                             </td>
-                            <td><span className="badge-neutral">{PLAN_LABEL[t.plan] || t.plan}</span></td>
+                            <td><span className="badge-neutral">{planLabel(t.plan)}</span></td>
                             <td className="hidden whitespace-nowrap text-ink/60 lg:table-cell">
                               {t.subscriptionExpiresAt ? new Date(t.subscriptionExpiresAt).toLocaleDateString("fr-FR") : "—"}
                             </td>

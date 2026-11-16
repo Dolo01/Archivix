@@ -5,6 +5,7 @@ import {
   Briefcase, Scale, Landmark, Lock, History, Smartphone, Menu, X, Building2, Bell,
 } from "lucide-react";
 import Logo, { LogoMark } from "../components/Logo.jsx";
+import PlanCards, { BillingToggle } from "../components/PlanCards.jsx";
 
 const PUBLICS = [
   {
@@ -39,14 +40,6 @@ const ETAPES = [
   { titre: "Archivez et retrouvez", texte: "Déposez vos fichiers par glisser-déposer, classez-les, retrouvez-les à tout moment." },
 ];
 
-const OFFRES = [
-  { nom: "Starter", prix: "60 000", detail: "Jusqu'à 5 utilisateurs" },
-  { nom: "Pro", prix: "100 000", detail: "Jusqu'à 10 utilisateurs", mise: true },
-  { nom: "Business", prix: "200 000", detail: "Jusqu'à 25 utilisateurs" },
-  { nom: "Enterprise", prix: null, detail: "Utilisateurs illimités" },
-];
-
-const INCLUS = ["Départements et dossiers", "Rôles et partages", "Discussion par document", "Support par email"];
 
 function ProductPreview() {
   const rows = [
@@ -102,6 +95,7 @@ function ProductPreview() {
 
 export default function Landing() {
   const [menu, setMenu] = useState(false);
+  const [duree, setDuree] = useState(1);
   const links = [
     { href: "#fonctionnalites", label: "Fonctionnalités" },
     { href: "#securite", label: "Sécurité" },
@@ -258,36 +252,18 @@ export default function Landing() {
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-sm font-semibold text-brand">Tarifs</p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight">Une offre pour chaque taille d'équipe.</h2>
-            <p className="mt-3 text-ink/60">Facturation annuelle en FCFA. 14 jours d'essai gratuit pour démarrer.</p>
+            <p className="mt-3 text-ink/60">Paiement mensuel ou annuel en FCFA. 14 jours d'essai gratuit, sans engagement.</p>
           </div>
-          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-            {OFFRES.map((p) => (
-              <div key={p.nom} className={`card relative flex flex-col p-6 ${p.mise ? "border-brand ring-1 ring-brand" : ""}`}>
-                {p.mise && (
-                  <span className="absolute -top-2.5 left-6 rounded-full bg-brand px-2.5 py-0.5 text-[11px] font-semibold text-white">Le plus choisi</span>
-                )}
-                <h3 className="font-semibold">{p.nom}</h3>
-                <p className="mt-0.5 text-sm text-ink/55">{p.detail}</p>
-                <p className="mt-5">
-                  {p.prix ? (
-                    <>
-                      <span className="text-3xl font-semibold tracking-tight">{p.prix}</span>
-                      <span className="text-sm text-ink/50"> FCFA / an</span>
-                    </>
-                  ) : (
-                    <span className="text-2xl font-semibold tracking-tight">Sur devis</span>
-                  )}
-                </p>
-                <ul className="mt-5 flex-1 space-y-2 text-sm text-ink/70">
-                  {INCLUS.map((f) => (
-                    <li key={f} className="flex gap-2"><Check size={16} className="mt-0.5 shrink-0 text-brand" /> {f}</li>
-                  ))}
-                </ul>
-                <Link to="/inscription" className={`${p.mise ? "btn-primary" : "btn-secondary"} mt-6 w-full`}>
-                  {p.prix ? "Essayer gratuitement" : "Nous contacter"}
+          <div className="mt-8 flex justify-center"><BillingToggle value={duree} onChange={setDuree} /></div>
+          <div className="mt-10">
+            <PlanCards
+              duree={duree}
+              renderAction={(p) => (
+                <Link to="/inscription" className={`${p.recommande ? "btn-primary" : "btn-secondary"} w-full`}>
+                  {p.surDevis ? "Nous contacter" : "Essayer gratuitement"}
                 </Link>
-              </div>
-            ))}
+              )}
+            />
           </div>
           <p className="mt-6 flex items-center justify-center gap-2 text-sm text-ink/55">
             <Smartphone size={15} /> Règlement par Wave ou Orange Money, sans carte bancaire.

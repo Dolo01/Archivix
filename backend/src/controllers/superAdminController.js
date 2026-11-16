@@ -67,7 +67,13 @@ exports.approveRequest = async (req, res) => {
 
     await prisma.tenant.update({
       where: { id: tenant.id },
-      data: { subscriptionExpiresAt: base, isActive: true, plan: request.plan },
+      data: {
+        subscriptionExpiresAt: base,
+        isActive: true,
+        plan: request.plan,
+        // Le quota suit l'offre, sans jamais réduire un quota déjà plus élevé
+        storageQuotaMb: Math.max(tenant.storageQuotaMb, PLANS[request.plan]?.quotaMb || tenant.storageQuotaMb),
+      },
     });
     await prisma.subscriptionRequest.update({
       where: { id: request.id },

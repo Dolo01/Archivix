@@ -12,14 +12,13 @@ import {
   Info,
 } from "lucide-react";
 import api from "../api/client";
-import { openDocument } from "../api/files";
 import { useAuth } from "../context/AuthContext.jsx";
 import PageHeader from "../components/ui/PageHeader.jsx";
 import StatCard from "../components/ui/StatCard.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import SealBadge from "../components/SealBadge.jsx";
-
-const PLAN_LABEL = { essai: "Essai gratuit", starter: "Starter", pro: "Pro", business: "Business", entreprise: "Enterprise" };
+import { planLabel } from "../utils/plans.js";
+import Onboarding from "../components/Onboarding.jsx";
 
 function formatSize(kb) {
   if (kb == null) return "—";
@@ -38,6 +37,31 @@ export default function Dashboard() {
   const [total, setTotal] = useState(0);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [usersCount, setUsersCount] = useState(null);
+  const [driveConfigured, setDriveConfigured] = useState(false);
+  const dismissKey = `archivix_mise_en_route_masquee_${tenant?.id}`;
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(dismissKey) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    api.get("/users").then(({ data }) => setUsersCount(data.length)).catch(() => {});
+    api.get("/integrations/google-drive").then(({ data }) => setDriveConfigured(Boolean(data.configured))).catch(() => {});
+  }, [user?.role]);
+
+  function dismissOnboarding() {
+    setDismissed(true);
+    try {
+      localStorage.setItem(dismissKey, "1");
+    } catch {
+      /* stockage indisponible : le guide réapparaîtra au prochain chargement */
+    }
+  }
 
   useEffect(() => {
     api
@@ -63,6 +87,18 @@ export default function Dashboard() {
   const canManage = user?.role === "admin" || user?.role === "gestionnaire";
   const totalMembers = departments.reduce((s, d) => s + (d.membres || 0), 0);
 
+  const steps = [
+    { key: "espace", title: "Créer l'espace de l'organisation", done: true },
+    { key: "depts", title: "Créer les départements", text: "Direction, Comptabilité, RH, Juridique…", done: departments.length > 0, to: "/app/departements", cta: "Créer" },
+    { key: "equipe", title: "Inviter votre équipe", text: "Chacun avec son rôle : gestionnaire ou lecteur", done: (usersCount || 0) > 1, to: "/app/equipe", cta: "Inviter" },
+    { key: "doc", title: "Archiver un premier document", text: "Glissez-déposez un fichier dans la page Documents", done: total > 0, to: "/app/documents", cta: "Archiver" },
+  ];
+  if (driveConfigured) {
+    steps.push({ key: "drive", title: "Connecter le Google Drive de l'organisation", text: "Vos fichiers restent chez vous", done: onDrive, to: "/app/parametres", cta: "Connecter", optional: true });
+  }
+  const allDone = steps.every((s) => s.done);
+  const showOnboarding = user?.role === "admin" && !loading && usersCount !== null && !dismissed && !allDone;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -77,7 +113,17 @@ export default function Dashboard() {
         }
       />
 
-      {isTrial && user?.role === "admin" && daysLeft !== null && (
+      {showOnboarding && (
+        <Onboarding
+          firstName={user?.fullName?.split(" ")[0] || ""}
+          orgName={tenant?.name}
+          steps={steps}
+          trial={isTrial && daysLeft !== null ? { daysLeft, until: expiry.toLocaleDateString("fr-FR") } : null}
+          onDismiss={dismissOnboarding}
+        />
+      )}
+
+      {!showOnboarding && isTrial && user?.role === "admin" && daysLeft !== null && (
         <div
           className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${
             daysLeft <= 3 ? "border-danger/25 bg-danger-light/50 text-danger-dark" : "border-brand/20 bg-brand-50 text-brand-dark"
@@ -122,7 +168,7 @@ export default function Dashboard() {
         />
         <StatCard
           label="Abonnement"
-          value={PLAN_LABEL[tenant?.plan] || tenant?.plan || "—"}
+          value={planLabel(tenant?.plan)}
           icon={CalendarClock}
           hint={expiry ? `${daysLeft > 0 ? "Valable jusqu'au" : "Expiré le"} ${expiry.toLocaleDateString("fr-FR")}` : "Aucun abonnement actif"}
         />
@@ -164,9 +210,9 @@ export default function Dashboard() {
                     <FileText size={17} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <button onClick={() => openDocument(doc)} className="block max-w-full truncate text-left text-sm font-medium hover:text-brand">
+                    <Link to={`/app/documents/${doc.id}`} className="block max-w-full truncate text-left text-sm font-medium hover:text-brand">
                       {doc.title}
-                    </button>
+                    </Link>
                     <p className="truncate text-xs text-ink/50">
                       {doc.department?.name || "—"}
                       {doc.reference ? ` · ${doc.reference}` : ""}

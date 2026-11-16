@@ -1,4 +1,5 @@
 const prisma = require("../config/prisma");
+const { logActivity } = require("../utils/activity");
 
 function canSeeFolder(req, folder) {
   if (req.superAdmin) return true;
@@ -77,6 +78,14 @@ exports.updateSharing = async (req, res) => {
   const updated = await prisma.folder.update({
     where: { id: folder.id },
     data: { sharedWithDepartments: JSON.stringify(sharedWithDepartments || []) },
+  });
+  const depts = (sharedWithDepartments || []).length
+    ? await prisma.department.findMany({ where: { id: { in: sharedWithDepartments } }, select: { name: true } })
+    : [];
+  await logActivity(req, {
+    action: "partage",
+    departmentId: folder.departmentId,
+    details: `Dossier « ${folder.name} » ${depts.length ? `partagé avec ${depts.map((d) => d.name).join(", ")}` : ": partage retiré"}`,
   });
   res.json(serialize(updated));
 };

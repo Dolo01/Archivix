@@ -14,6 +14,7 @@ import {
   LifeBuoy,
   ChevronsUpDown,
   Settings,
+  History,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import api from "../api/client";
@@ -29,6 +30,7 @@ const NAV_MAIN = [
   { to: "/app/departements", label: "Départements", icon: Building2 },
 ];
 const NAV_ADMIN = [
+  { to: "/app/activite", label: "Activité", icon: History },
   { to: "/app/equipe", label: "Utilisateurs", icon: Users },
   { to: "/app/facturation", label: "Abonnement", icon: CreditCard },
   { to: "/app/parametres", label: "Paramètres", icon: Settings },

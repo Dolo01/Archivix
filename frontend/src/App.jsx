@@ -8,6 +8,8 @@ import Privacy from "./pages/Privacy.jsx";
 import DashboardLayout from "./layouts/DashboardLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Documents from "./pages/Documents.jsx";
+import DocumentDetail from "./pages/DocumentDetail.jsx";
+import Activity from "./pages/Activity.jsx";
 import Billing from "./pages/Billing.jsx";
 import Team from "./pages/Team.jsx";
 import Departments from "./pages/Departments.jsx";
@@ -75,6 +77,15 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="documents" element={<Documents />} />
+        <Route path="documents/:id" element={<DocumentDetail />} />
+        <Route
+          path="activite"
+          element={
+            <AdminRoute>
+              <Activity />
+            </AdminRoute>
+          }
+        />
         <Route path="departements" element={<Departments />} />
         <Route
           path="facturation"

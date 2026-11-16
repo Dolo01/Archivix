@@ -67,19 +67,21 @@ npm run dev
 
 ## Abonnement manuel (sans API de paiement)
 
-- **Essai gratuit de 14 jours** automatique à l'inscription de toute nouvelle entreprise (offre `essai`, aucune limite d'utilisateurs pendant l'essai).
-- Grille tarifaire, facturation annuelle uniquement :
+- **Essai gratuit de 14 jours** automatique à l'inscription (toutes les fonctions, 1 Go de stockage Archivix).
+- Grille tarifaire, paiement **mensuel ou annuel** (annuel = 10 mois, soit 2 mois offerts) :
 
-  | Offre | Utilisateurs | Prix |
-  |---|---|---|
-  | Starter | 5 | 60 000 FCFA/an |
-  | Pro | 10 | 100 000 FCFA/an |
-  | Business | 25 | 200 000 FCFA/an |
-  | Enterprise | Illimité | Sur devis (bouton "Nous contacter") |
+  | Offre | Utilisateurs | Mensuel | Annuel | Stockage Archivix | Journal d'activité |
+  |---|---|---|---|---|---|
+  | Essentiel | 5 | 5 000 FCFA | 50 000 FCFA | 1 Go | — |
+  | Professionnel | 15 | 12 000 FCFA | 120 000 FCFA | 3 Go | ✓ |
+  | Business | 40 | 25 000 FCFA | 250 000 FCFA | 10 Go | ✓ + export CSV |
+  | Institution | Illimité | Sur devis | Sur devis | 10 Go | ✓ + export CSV |
 
-  Modifiable dans `backend/src/utils/plans.js`.
+  Avec le Google Drive de l'organisation, aucun quota de stockage ne s'applique. Les anciennes offres (Starter, Pro, Enterprise) restent reconnues pour les organisations qui les ont.
 
-1. L'admin de l'entreprise clique sur **Facturation**, choisit une offre (Starter/Pro/Business) et voit les numéros Wave / Orange Money à utiliser (configurés dans `.env` via `WAVE_NUMBER` / `ORANGE_MONEY_NUMBER`). L'offre Enterprise ouvre directement un email vers `PAYMENT_BENEFICIARY_EMAIL`.
+  Modifiable dans `backend/src/utils/plans.js` (et l'affichage dans `frontend/src/utils/plans.js`).
+
+1. L'admin de l'entreprise clique sur **Abonnement**, choisit une offre (Essentiel/Professionnel/Business) et la durée (mensuelle ou annuelle) et voit les numéros Wave / Orange Money à utiliser (configurés dans `.env` via `WAVE_NUMBER` / `ORANGE_MONEY_NUMBER`). L'offre Institution ouvre directement un email vers `PAYMENT_BENEFICIARY_EMAIL`.
 2. Il effectue le dépôt, puis renseigne le numéro utilisé, la référence de la transaction, et peut joindre une capture d'écran.
 3. La demande apparaît chez le super-administrateur (`/superadmin`), qui l'approuve (l'abonnement de 12 mois s'active sur l'offre choisie, avec sa limite d'utilisateurs) ou la refuse (avec motif).
 4. L'entreprise est notifiée automatiquement de la décision (cloche de notifications en temps réel).
