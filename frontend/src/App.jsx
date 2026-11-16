@@ -10,6 +10,7 @@ import Documents from "./pages/Documents.jsx";
 import Billing from "./pages/Billing.jsx";
 import Team from "./pages/Team.jsx";
 import Departments from "./pages/Departments.jsx";
+import Settings from "./pages/Settings.jsx";
 import SuperAdminLogin from "./pages/superadmin/SuperAdminLogin.jsx";
 import SuperAdminDashboard from "./pages/superadmin/SuperAdminDashboard.jsx";
 
@@ -78,6 +79,14 @@ export default function App() {
           element={
             <AdminRoute>
               <Billing />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="parametres"
+          element={
+            <AdminRoute>
+              <Settings />
             </AdminRoute>
           }
         />

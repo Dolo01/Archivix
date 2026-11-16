@@ -12,6 +12,7 @@ import {
   Info,
 } from "lucide-react";
 import api from "../api/client";
+import { openDocument } from "../api/files";
 import { useAuth } from "../context/AuthContext.jsx";
 import PageHeader from "../components/ui/PageHeader.jsx";
 import StatCard from "../components/ui/StatCard.jsx";
@@ -22,6 +23,7 @@ const PLAN_LABEL = { essai: "Essai gratuit", starter: "Starter", pro: "Pro", bus
 
 function formatSize(kb) {
   if (kb == null) return "—";
+  if (kb < 1) return "< 1 Ko";
   return kb < 1024 ? `${Math.round(kb)} Ko` : `${(kb / 1024).toFixed(1)} Mo`;
 }
 
@@ -57,6 +59,7 @@ export default function Dashboard() {
   const expiry = tenant?.subscriptionExpiresAt ? new Date(tenant.subscriptionExpiresAt) : null;
   const daysLeft = expiry ? Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24)) : null;
   const isTrial = tenant?.plan === "essai";
+  const onDrive = tenant?.storageProvider === "google_drive";
   const canManage = user?.role === "admin" || user?.role === "gestionnaire";
   const totalMembers = departments.reduce((s, d) => s + (d.membres || 0), 0);
 
@@ -94,19 +97,23 @@ export default function Dashboard() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Documents archivés" value={total.toLocaleString("fr-FR")} icon={FileStack} hint="Accessibles selon vos droits" />
-        <StatCard
-          label="Stockage utilisé"
-          value={`${quotaPct} %`}
-          icon={HardDrive}
-          hint={tenant ? `${tenant.storageUsedMb.toFixed(1)} Mo sur ${tenant.storageQuotaMb} Mo` : ""}
-        >
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-ink/[0.06]">
-            <div
-              className={`h-full rounded-full ${quotaPct >= 90 ? "bg-danger" : quotaPct >= 75 ? "bg-warning" : "bg-brand"}`}
-              style={{ width: `${quotaPct}%` }}
-            />
-          </div>
-        </StatCard>
+        {onDrive ? (
+          <StatCard label="Stockage" value="Google Drive" icon={HardDrive} hint={tenant?.googleDriveEmail || "Drive de votre organisation"} />
+        ) : (
+          <StatCard
+            label="Stockage utilisé"
+            value={`${quotaPct} %`}
+            icon={HardDrive}
+            hint={tenant ? `${tenant.storageUsedMb.toFixed(1)} Mo sur ${tenant.storageQuotaMb} Mo` : ""}
+          >
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-ink/[0.06]">
+              <div
+                className={`h-full rounded-full ${quotaPct >= 90 ? "bg-danger" : quotaPct >= 75 ? "bg-warning" : "bg-brand"}`}
+                style={{ width: `${quotaPct}%` }}
+              />
+            </div>
+          </StatCard>
+        )}
         <StatCard
           label="Départements"
           value={departments.length}
@@ -157,9 +164,9 @@ export default function Dashboard() {
                     <FileText size={17} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="block truncate text-sm font-medium hover:text-brand">
+                    <button onClick={() => openDocument(doc)} className="block max-w-full truncate text-left text-sm font-medium hover:text-brand">
                       {doc.title}
-                    </a>
+                    </button>
                     <p className="truncate text-xs text-ink/50">
                       {doc.department?.name || "—"}
                       {doc.reference ? ` · ${doc.reference}` : ""}

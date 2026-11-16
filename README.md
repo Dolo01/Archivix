@@ -43,6 +43,10 @@ La commande `create-superadmin` crée votre compte de super-administrateur de la
 
 En développement, si `SUPABASE_URL` n'est pas renseigné dans `.env`, les fichiers (documents, captures de paiement) sont simplement écrits dans `backend/uploads/`. En production, renseigne `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` et `SUPABASE_BUCKET` : les fichiers partent alors vers Supabase Storage et ne sont jamais perdus au redémarrage du serveur (contrairement à un disque d'hébergeur gratuit, qui est effacé à chaque redéploiement).
 
+## Stockage dans le Google Drive du client (optionnel)
+
+Chaque organisation peut connecter son propre Google Drive depuis **Paramètres** (administrateurs). Ses nouveaux documents y sont enregistrés (un dossier par organisation, un sous-dossier par département) ; les droits d'accès d'Archivix continuent de s'appliquer et les fichiers sont ouverts via des liens signés valables 5 minutes. Configuration Google Cloud : voir la section 6 de `DEPLOYMENT.md`.
+
 ## Déploiement gratuit
 
 Voir **`DEPLOYMENT.md`** pour un guide complet, étape par étape, sans nom de domaine : Supabase (base + stockage) + Render (backend en Web Service, frontend en Static Site).

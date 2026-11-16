@@ -27,6 +27,8 @@ function tenantResponse(tenant) {
     subscriptionExpiresAt: tenant.subscriptionExpiresAt,
     storageUsedMb: tenant.storageUsedMb,
     storageQuotaMb: tenant.storageQuotaMb,
+    storageProvider: tenant.storageProvider,
+    googleDriveEmail: tenant.storageProvider === "google_drive" ? tenant.googleDriveEmail : null,
   };
 }
 

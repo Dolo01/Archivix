@@ -38,6 +38,7 @@ Tout se pilote depuis un seul tableau de bord Render, avec des adresses du type 
    - `DATABASE_URL` (celle de Supabase, étape 1.3)
    - `JWT_SECRET` (invente une longue chaîne aléatoire)
    - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_BUCKET=archivix`
+   - (optionnel) les variables `GOOGLE_*` : voir la section 6
    - `WAVE_NUMBER`, `ORANGE_MONEY_NUMBER`, `PAYMENT_BENEFICIARY_NAME`, `PAYMENT_BENEFICIARY_EMAIL`
    - `FRONTEND_URL` : laisse `http://localhost:5173` pour l'instant, tu la corrigeras à l'étape 4
 5. Clique **Create Web Service**. Render te donne une URL du type `https://archivix-backend.onrender.com`. Note-la.
@@ -80,6 +81,43 @@ Retourne dans ton **Web Service** (backend) → **Environment** → mets à jour
 - Va sur `https://archivix-backend.onrender.com/api/health` pour un test rapide du backend.
 - Connecte-toi en super-admin sur `https://archivix-frontend.onrender.com/superadmin/connexion`.
 - Recharge la page sur une route profonde comme `/app/documents` pour vérifier que la règle de réécriture fonctionne (pas de 404).
+
+## 6. Option : stockage dans le Google Drive de chaque client
+
+Chaque organisation cliente peut connecter **son propre** Google Drive (menu **Paramètres**, réservé aux administrateurs). Ses documents y sont alors enregistrés, dans un dossier « Archivix — Nom de l'organisation » avec un sous-dossier par département. Tant que tu ne configures pas cette partie, le bouton reste désactivé et tout continue de fonctionner avec Supabase.
+
+Archivix ne demande que l'autorisation `drive.file` : il n'accède qu'aux fichiers qu'il a lui-même créés, jamais au reste du Drive du client. Google classe cette autorisation comme « non sensible », ce qui allège sa vérification.
+
+### 6.1 Créer le projet et l'identifiant OAuth (gratuit)
+
+1. Va sur https://console.cloud.google.com → crée un projet (ex. « Archivix »).
+2. **API et services → Bibliothèque** → cherche **Google Drive API** → **Activer**.
+3. **Google Auth Platform** (anciennement « Écran de consentement OAuth ») :
+   - **Branding** : nom de l'application (« Archivix »), e-mail d'assistance, logo, lien vers la page d'accueil et vers une politique de confidentialité (obligatoire pour publier).
+   - **Audience** : type d'utilisateur **Externe**.
+   - **Data Access** (accès aux données) : ajoute l'autorisation `.../auth/drive.file`.
+4. **Google Auth Platform → Clients → Créer un client** :
+   - Type : **Application Web**
+   - **URI de redirection autorisés** : `https://archivix-backend.onrender.com/api/integrations/google-drive/callback` (remplace par l'URL de ton backend ; en local : `http://localhost:5000/api/integrations/google-drive/callback`).
+   - Récupère l'**ID client** et le **code secret du client**.
+
+### 6.2 Variables d'environnement du backend (Render → Environment)
+
+- `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` : les valeurs de l'étape 6.1
+- `GOOGLE_REDIRECT_URI` : exactement la même URI que celle déclarée chez Google
+- `GOOGLE_TOKEN_ENCRYPTION_KEY` : clé qui chiffre les autorisations Google enregistrées en base. Génère-la avec
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  ```
+  ⚠️ Garde-la précieusement et ne la change pas : si elle change, chaque client devra reconnecter son Drive.
+
+### 6.3 ⚠️ Publier l'application (indispensable)
+
+Tant que l'application est en statut **Test** (Google Auth Platform → **Audience**), seuls les comptes ajoutés comme testeurs (100 maximum) peuvent la connecter, et **leur autorisation expire au bout de 7 jours** : les clients verraient alors « reconnectez Google Drive » chaque semaine. Pour tes essais, ajoute ton propre compte comme testeur ; avant d'ouvrir l'option à tes clients, clique **Publier l'application** (statut **En production**) et suis la vérification demandée par Google.
+
+### 6.4 Tester
+
+Connecte-toi en administrateur d'une organisation → **Paramètres** → **Connecter Google Drive** → accepte l'autorisation → archive un document → vérifie qu'il apparaît dans le Drive, dans `Archivix — …/Nom du département/`.
 
 ## Limites du plan gratuit (à connaître)
 

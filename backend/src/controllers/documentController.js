@@ -1,6 +1,25 @@
 const prisma = require("../config/prisma");
 const { notifyDepartmentMembers } = require("../utils/notify");
+const jwt = require("jsonwebtoken");
+const { Readable } = require("stream");
 const { saveFile } = require("../utils/storage");
+const drive = require("../utils/googleDrive");
+
+// Renvoie (en le créant au besoin) le sous-dossier Drive du département.
+async function departmentDriveFolder(accessToken, tenant, departmentId) {
+  const dept = await prisma.department.findUnique({ where: { id: departmentId } });
+  if (dept.googleDriveFolderId) return dept.googleDriveFolderId;
+  const folderId = await drive.createFolder(accessToken, dept.name, tenant.googleDriveFolderId);
+  await prisma.department.update({ where: { id: dept.id }, data: { googleDriveFolderId: folderId } });
+  return folderId;
+}
+
+function driveErrorResponse(res, err, fallback) {
+  if (err instanceof drive.DriveError) {
+    return res.status(err.status).json({ message: err.message, reconnectDrive: err.reconnect || undefined });
+  }
+  return res.status(500).json({ message: fallback, error: err.message });
+}
 
 // Un document est visible : pour l'admin, tout le registre ; pour les autres,
 // les documents de leur département, ceux partagés directement avec eux (par document),
@@ -29,8 +48,9 @@ async function buildScopeWhere(req) {
 }
 
 function serialize(doc) {
+  const { storageKey, ...rest } = doc;
   return {
-    ...doc,
+    ...rest,
     tags: JSON.parse(doc.tags || "[]"),
     sharedWithDepartmentIds: JSON.parse(doc.sharedWithDepartments || "[]"),
   };
@@ -119,8 +139,10 @@ exports.upload = async (req, res) => {
 
     const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
     const sizeKb = Math.round(req.file.size / 1024);
+    const onDrive = tenant.storageProvider === "google_drive";
 
-    if (tenant.storageUsedMb + sizeKb / 1024 > tenant.storageQuotaMb) {
+    // Sur Google Drive, l'espace utilisé est celui du client : le quota Archivix ne s'applique pas.
+    if (!onDrive && tenant.storageUsedMb + sizeKb / 1024 > tenant.storageQuotaMb) {
       return res.status(413).json({ message: "Quota de stockage dépassé pour votre offre actuelle." });
     }
 
@@ -128,7 +150,20 @@ exports.upload = async (req, res) => {
       ? String(req.body.sharedWithDepartments).split(",").filter(Boolean)
       : [];
 
-    const { url: fileUrl } = await saveFile(req.file.buffer, req.file.originalname, `documents/${req.tenantId}`, req.file.mimetype);
+    let fileUrl = "";
+    let storageKey = null;
+    if (onDrive) {
+      const accessToken = await drive.getAccessToken(tenant);
+      const parentId = await departmentDriveFolder(accessToken, tenant, departmentId);
+      storageKey = await drive.uploadFile(accessToken, {
+        buffer: req.file.buffer,
+        name: req.file.originalname,
+        mimeType: req.file.mimetype,
+        parentId,
+      });
+    } else {
+      ({ url: fileUrl } = await saveFile(req.file.buffer, req.file.originalname, `documents/${req.tenantId}`, req.file.mimetype));
+    }
 
     const doc = await prisma.document.create({
       data: {
@@ -142,16 +177,20 @@ exports.upload = async (req, res) => {
         tags: JSON.stringify(req.body.tags ? req.body.tags.split(",").map((t) => t.trim()) : []),
         fileName: req.file.originalname,
         fileUrl,
+        storageProvider: onDrive ? "google_drive" : "archivix",
+        storageKey,
         mimeType: req.file.mimetype,
         sizeKb,
         uploadedById: req.user.id,
       },
     });
 
-    await prisma.tenant.update({
-      where: { id: req.tenantId },
-      data: { storageUsedMb: tenant.storageUsedMb + sizeKb / 1024 },
-    });
+    if (!onDrive) {
+      await prisma.tenant.update({
+        where: { id: req.tenantId },
+        data: { storageUsedMb: tenant.storageUsedMb + sizeKb / 1024 },
+      });
+    }
 
     notifyDepartmentMembers(req.app, {
       tenantId: req.tenantId,
@@ -164,7 +203,7 @@ exports.upload = async (req, res) => {
 
     res.status(201).json(serialize(doc));
   } catch (err) {
-    res.status(500).json({ message: "Erreur lors de l'archivage du document.", error: err.message });
+    driveErrorResponse(res, err, "Erreur lors de l'archivage du document.");
   }
 };
 
@@ -191,7 +230,65 @@ exports.remove = async (req, res) => {
   const where = await buildScopeWhere(req);
   const doc = await prisma.document.findFirst({ where: { ...where, id: req.params.id } });
   if (!doc) return res.status(404).json({ message: "Document introuvable ou accès non autorisé." });
+
+  if (doc.storageProvider === "google_drive" && doc.storageKey) {
+    try {
+      const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
+      const accessToken = await drive.getAccessToken(tenant);
+      await drive.trashFile(accessToken, doc.storageKey);
+    } catch (err) {
+      // Fichier déjà supprimé côté Drive : on peut retirer la fiche sans risque.
+      if (!(err instanceof drive.DriveError && err.status === 404)) {
+        return driveErrorResponse(res, err, "Impossible de supprimer le fichier dans Google Drive.");
+      }
+    }
+  }
+
   await prisma.message.deleteMany({ where: { documentId: doc.id } });
   await prisma.document.delete({ where: { id: doc.id } });
   res.json({ message: "Document supprimé." });
+};
+
+// Lien d'ouverture d'un document. Pour Google Drive, les fichiers restent privés :
+// on délivre un lien signé valable 5 minutes, après vérification des droits de l'utilisateur.
+exports.link = async (req, res) => {
+  const where = await buildScopeWhere(req);
+  const doc = await prisma.document.findFirst({ where: { ...where, id: req.params.id } });
+  if (!doc) return res.status(404).json({ message: "Document introuvable ou accès non autorisé." });
+
+  if (doc.storageProvider !== "google_drive") return res.json({ url: doc.fileUrl });
+
+  const jeton = jwt.sign({ purpose: "fichier", documentId: doc.id, tenantId: doc.tenantId }, process.env.JWT_SECRET, {
+    expiresIn: "5m",
+  });
+  res.json({ url: `/api/documents/${doc.id}/fichier?jeton=${encodeURIComponent(jeton)}` });
+};
+
+// Diffuse le fichier depuis le Drive de l'organisation (route publique protégée par le lien signé).
+exports.streamFile = async (req, res) => {
+  let payload;
+  try {
+    payload = jwt.verify(String(req.query.jeton || ""), process.env.JWT_SECRET);
+    if (payload.purpose !== "fichier" || payload.documentId !== req.params.id) throw new Error();
+  } catch {
+    return res.status(401).send("Lien expiré. Rouvrez le document depuis Archivix.");
+  }
+
+  try {
+    const doc = await prisma.document.findFirst({ where: { id: payload.documentId, tenantId: payload.tenantId } });
+    if (!doc || doc.storageProvider !== "google_drive") return res.status(404).send("Document introuvable.");
+    const tenant = await prisma.tenant.findUnique({ where: { id: doc.tenantId } });
+    const accessToken = await drive.getAccessToken(tenant);
+    const upstream = await drive.downloadFile(accessToken, doc.storageKey);
+
+    res.setHeader("Content-Type", doc.mimeType || "application/octet-stream");
+    res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(doc.fileName)}`);
+    res.setHeader("Cache-Control", "private, no-store");
+    const length = upstream.headers.get("content-length");
+    if (length) res.setHeader("Content-Length", length);
+    Readable.fromWeb(upstream.body).pipe(res);
+  } catch (err) {
+    const status = err instanceof drive.DriveError ? err.status : 500;
+    res.status(status).send(err instanceof drive.DriveError ? err.message : "Impossible d'ouvrir ce document.");
+  }
 };

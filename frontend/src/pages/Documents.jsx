@@ -5,6 +5,7 @@ import {
   FolderPlus, Folder, FolderOpen, FileText, ChevronLeft, ChevronRight, Users,
 } from "lucide-react";
 import api from "../api/client";
+import { openDocument } from "../api/files";
 import SealBadge from "../components/SealBadge.jsx";
 import Modal from "../components/Modal.jsx";
 import DocumentChat from "../components/DocumentChat.jsx";
@@ -23,6 +24,7 @@ const PAGE_SIZE = 20;
 
 function formatSize(kb) {
   if (kb == null) return "—";
+  if (kb < 1) return "< 1 Ko";
   return kb < 1024 ? `${Math.round(kb)} Ko` : `${(kb / 1024).toFixed(1)} Mo`;
 }
 
@@ -447,13 +449,14 @@ export default function Documents() {
                               <FileText size={16} />
                             </span>
                             <div className="min-w-0">
-                              <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="block truncate font-medium hover:text-brand">
+                              <button onClick={() => openDocument(doc)} className="block max-w-full truncate text-left font-medium hover:text-brand">
                                 {doc.title}
-                              </a>
+                              </button>
                               <p className="truncate text-xs text-ink/45">
                                 {doc.department?.name && <span className="2xl:hidden">{doc.department.name} · </span>}
                                 {doc.reference && <span className="font-mono">{doc.reference} · </span>}
                                 {doc.folder ? doc.folder.name : "Hors dossier"}
+                                {doc.storageProvider === "google_drive" && " · Google Drive"}
                                 {doc.sharedWithDepartments?.length > 0 &&
                                   ` · partagé avec ${doc.sharedWithDepartments.map((d) => d.name).join(", ")}`}
                               </p>
@@ -469,9 +472,9 @@ export default function Documents() {
                         <td>
                           <div className="flex items-center justify-end gap-0.5">
                             <button onClick={() => setChatDoc(doc)} title="Discussion" className="icon-btn-info"><MessageSquare size={15} /></button>
-                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" title="Ouvrir / imprimer" className="icon-btn-neutral">
+                            <button onClick={() => openDocument(doc)} title="Ouvrir / imprimer" className="icon-btn-neutral">
                               <ExternalLink size={15} />
-                            </a>
+                            </button>
                             {canManage && (
                               <>
                                 <button onClick={() => setShareDoc(doc)} title="Partager" className="icon-btn-brand"><Share2 size={15} /></button>

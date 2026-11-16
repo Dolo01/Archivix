@@ -20,6 +20,7 @@ const messageRoutes = require("./routes/messageRoutes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const superAdminRoutes = require("./routes/superAdminRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const integrationRoutes = require("./routes/integrationRoutes");
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -47,6 +48,7 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/abonnement", subscriptionRoutes);
 app.use("/api/superadmin", superAdminRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/integrations", integrationRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: "Ressource introuvable." });
