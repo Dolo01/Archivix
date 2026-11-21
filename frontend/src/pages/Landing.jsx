@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight, Check, FileText, Search, ShieldCheck, Users, FolderTree, MessageSquare,
   Briefcase, Scale, Landmark, Lock, History, Smartphone, Menu, X, Building2, Bell,
-} from "lucide-react";
+} from "../components/icons.jsx";
 import Logo, { LogoMark } from "../components/Logo.jsx";
 import PlanCards, { BillingToggle } from "../components/PlanCards.jsx";
 

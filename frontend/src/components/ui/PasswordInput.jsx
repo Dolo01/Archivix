@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, Lock } from "lucide-react";
+import { Eye, EyeOff, Lock } from "../icons.jsx";
 
 // Champ mot de passe avec bouton « afficher / masquer »
 export default function PasswordInput({ value, onChange, autoComplete = "current-password", minLength, required = true, placeholder, autoFocus, id, withIcon = true }) {

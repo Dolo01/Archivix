@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   LogOut, CheckCircle2, XCircle, Clock, Building2, Power, FileStack, ChevronRight,
   LayoutGrid, CreditCard, Menu, X, Image as ImageIcon,
-} from "lucide-react";
+} from "../../components/icons.jsx";
 import superAdminApi from "../../api/superAdminClient";
 import { useSuperAdmin } from "../../context/SuperAdminContext.jsx";
 import Modal from "../../components/Modal.jsx";

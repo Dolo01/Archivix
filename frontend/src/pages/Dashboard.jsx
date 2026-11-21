@@ -10,13 +10,16 @@ import {
   FileText,
   AlertTriangle,
   Info,
-} from "lucide-react";
+  Search,
+  Users,
+} from "../components/icons.jsx";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
-import PageHeader from "../components/ui/PageHeader.jsx";
 import StatCard from "../components/ui/StatCard.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import SealBadge from "../components/SealBadge.jsx";
+import FileIcon from "../components/ui/FileIcon.jsx";
+import DeptBadge from "../components/ui/DeptBadge.jsx";
 import { planLabel } from "../utils/plans.js";
 import Onboarding from "../components/Onboarding.jsx";
 
@@ -101,17 +104,30 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={`${greeting()}, ${user?.fullName?.split(" ")[0] || ""}`}
-        subtitle={`Vue d'ensemble des archives de ${tenant?.name || "votre organisation"}.`}
-        actions={
-          canManage && (
-            <Link to="/app/documents" className="btn-primary">
-              <Plus size={16} /> Archiver un document
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B1A3A] via-[#12306E] to-brand px-6 py-7 text-white shadow-raised sm:px-8">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#60A5FA]/25 blur-3xl" />
+        <div className="relative flex flex-wrap items-end justify-between gap-5">
+          <div className="min-w-0">
+            <p className="text-sm text-white/65 first-letter:uppercase">
+              {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-[28px]">
+              {greeting()}, {user?.fullName?.split(" ")[0] || ""}
+            </h1>
+            <p className="mt-1.5 text-sm text-white/70">Vue d'ensemble des archives de {tenant?.name || "votre organisation"}.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/app/documents" className="btn border border-white/20 bg-white/10 px-4 py-2.5 text-white backdrop-blur hover:bg-white/20">
+              <Search size={16} /> Rechercher
             </Link>
-          )
-        }
-      />
+            {canManage && (
+              <Link to="/app/documents" className="btn bg-white px-4 py-2.5 font-semibold text-brand-dark shadow-card hover:bg-blue-50">
+                <Plus size={16} /> Archiver un document
+              </Link>
+            )}
+          </div>
+        </div>
+      </section>
 
       {showOnboarding && (
         <Onboarding
@@ -142,11 +158,12 @@ export default function Dashboard() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Documents archivés" value={total.toLocaleString("fr-FR")} icon={FileStack} hint="Accessibles selon vos droits" />
+        <StatCard tone="blue" label="Documents archivés" value={total.toLocaleString("fr-FR")} icon={FileStack} hint="Accessibles selon vos droits" />
         {onDrive ? (
-          <StatCard label="Stockage" value="Google Drive" icon={HardDrive} hint={tenant?.googleDriveEmail || "Drive de votre organisation"} />
+          <StatCard tone="emerald" label="Stockage" value="Google Drive" icon={HardDrive} hint={tenant?.googleDriveEmail || "Drive de votre organisation"} />
         ) : (
           <StatCard
+            tone="emerald"
             label="Stockage utilisé"
             value={`${quotaPct} %`}
             icon={HardDrive}
@@ -154,19 +171,21 @@ export default function Dashboard() {
           >
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-ink/[0.06]">
               <div
-                className={`h-full rounded-full ${quotaPct >= 90 ? "bg-danger" : quotaPct >= 75 ? "bg-warning" : "bg-brand"}`}
+                className={`h-full rounded-full ${quotaPct >= 90 ? "bg-danger" : quotaPct >= 75 ? "bg-warning" : "bg-emerald-500"}`}
                 style={{ width: `${quotaPct}%` }}
               />
             </div>
           </StatCard>
         )}
         <StatCard
+          tone="violet"
           label="Départements"
           value={departments.length}
-          icon={Building2}
+          icon={Users}
           hint={`${totalMembers} membre${totalMembers > 1 ? "s" : ""} rattaché${totalMembers > 1 ? "s" : ""}`}
         />
         <StatCard
+          tone="amber"
           label="Abonnement"
           value={planLabel(tenant?.plan)}
           icon={CalendarClock}
@@ -205,10 +224,8 @@ export default function Dashboard() {
           ) : (
             <ul className="divide-y divide-line">
               {documents.map((doc) => (
-                <li key={doc.id} className="flex items-center gap-4 px-5 py-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-paper-dim text-ink/50">
-                    <FileText size={17} />
-                  </span>
+                <li key={doc.id} className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-paper-dim/60">
+                  <FileIcon mimeType={doc.mimeType} fileName={doc.fileName} />
                   <div className="min-w-0 flex-1">
                     <Link to={`/app/documents/${doc.id}`} className="block max-w-full truncate text-left text-sm font-medium hover:text-brand">
                       {doc.title}
@@ -241,11 +258,9 @@ export default function Dashboard() {
             <EmptyState icon={Building2} title="Aucun département" text="Structurez vos archives par service." />
           ) : (
             <ul className="divide-y divide-line">
-              {departments.slice(0, 6).map((d) => (
-                <li key={d.id} className="flex items-center gap-3 px-5 py-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand">
-                    <Building2 size={16} />
-                  </span>
+              {departments.slice(0, 6).map((d, i) => (
+                <li key={d.id} className="flex items-center gap-3 px-5 py-3.5">
+                  <DeptBadge name={d.name} index={i} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{d.name}</p>
                     <p className="text-xs text-ink/50">

@@ -1,4 +1,4 @@
-import { Check, Minus } from "lucide-react";
+import { Check, Minus } from "./icons.jsx";
 import { OFFRES } from "../utils/plans.js";
 
 // Sélecteur mensuel / annuel

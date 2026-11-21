@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "../components/icons.jsx";
 import Logo from "../components/Logo.jsx";
 
 // Adresse de contact affichée publiquement et date de dernière mise à jour de la politique.

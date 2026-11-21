@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Building2, User, Mail } from "lucide-react";
+import { Building2, User, Mail } from "../components/icons.jsx";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
 import AuthLayout from "../components/AuthLayout.jsx";

@@ -17,11 +17,12 @@ import {
   History,
   KeyRound,
   Lock,
-} from "lucide-react";
+  PanelLeft,
+} from "../components/icons.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import api from "../api/client";
 import { getSocket } from "../api/socket";
-import Logo from "../components/Logo.jsx";
+import Logo, { LogoMark } from "../components/Logo.jsx";
 import Avatar from "../components/ui/Avatar.jsx";
 import PushToggle from "../components/PushToggle.jsx";
 import Modal from "../components/Modal.jsx";
@@ -41,20 +42,26 @@ const NAV_ADMIN = [
   { to: "/app/parametres", label: "Paramètres", icon: Settings },
 ];
 
-function NavItem({ to, label, icon: Icon, end, onClick }) {
+function NavItem({ to, label, icon: Icon, end, onClick, compact }) {
   return (
     <NavLink
       to={to}
       end={end}
       onClick={onClick}
+      title={compact ? label : undefined}
       className={({ isActive }) =>
-        `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-          isActive ? "bg-brand-50 text-brand-dark" : "text-ink/65 hover:bg-ink/[0.04] hover:text-ink"
+        `group relative flex items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors ${compact ? "justify-center px-0" : "px-3"} ${
+          isActive ? "bg-white/[0.12] text-white" : "text-white/65 hover:bg-white/[0.06] hover:text-white"
         }`
       }
     >
-      <Icon size={17} strokeWidth={2} />
-      {label}
+      {({ isActive }) => (
+        <>
+          {isActive && <span className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#60A5FA]" />}
+          <Icon size={20} active={isActive} className={`shrink-0 ${isActive ? "text-[#93C5FD]" : "text-white/55 group-hover:text-white/80"}`} />
+          {!compact && <span className="truncate">{label}</span>}
+        </>
+      )}
     </NavLink>
   );
 }
@@ -84,6 +91,24 @@ export default function DashboardLayout() {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [passwordDone, setPasswordDone] = useState(false);
   const [, forceRender] = useState(0);
+  // Menu latéral replié (icônes seules) sur grand écran, mémorisé sur cet appareil
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("archivix_menu_replie") === "1";
+    } catch {
+      return false;
+    }
+  });
+  function toggleCollapsed() {
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem("archivix_menu_replie", c ? "0" : "1");
+      } catch {
+        /* sans gravité */
+      }
+      return !c;
+    });
+  }
 
   // Lecture seule : abonnement expiré (vérifié à l'affichage, et dès qu'une action est refusée par le serveur)
   const expiry = tenant?.subscriptionExpiresAt ? new Date(tenant.subscriptionExpiresAt) : null;
@@ -138,58 +163,74 @@ export default function DashboardLayout() {
     navigate(q ? `/app/documents?q=${encodeURIComponent(q)}` : "/app/documents");
   }
 
-  const sidebar = (
-    <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center px-5">
-        <Logo size={30} />
+  const renderSidebar = (c) => (
+    <div className="flex h-full flex-col bg-gradient-to-b from-[#0B1A3A] to-[#0F2557] text-white">
+      <div className={`flex h-16 items-center ${c ? "justify-center" : "px-5"}`}>
+        {c ? <LogoMark size={32} /> : <Logo size={30} light />}
       </div>
 
-      <div className="mx-3 mb-4 rounded-lg border border-line bg-paper-dim/60 px-3 py-2.5">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-ink/40">Organisation</p>
-        <p className="mt-0.5 truncate text-sm font-semibold text-ink">{tenant?.name}</p>
-      </div>
+      {c ? (
+        <div className="mx-auto mb-5 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.08] text-xs font-semibold" title={tenant?.name}>
+          {(tenant?.name || "?").slice(0, 2).toUpperCase()}
+        </div>
+      ) : (
+        <div className="mx-3 mb-5 rounded-xl border border-white/10 bg-white/[0.06] px-3.5 py-3">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-white/45">Organisation</p>
+          <p className="mt-0.5 truncate text-sm font-semibold text-white">{tenant?.name}</p>
+        </div>
+      )}
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3">
         <div className="space-y-0.5">
           {NAV_MAIN.map((item) => (
-            <NavItem key={item.to} {...item} />
+            <NavItem key={item.to} {...item} compact={c} />
           ))}
         </div>
 
         {isAdmin && (
           <div>
-            <p className="px-3 pb-2 text-[11px] font-medium uppercase tracking-wider text-ink/40">Administration</p>
+            {c ? (
+              <div className="mx-3 mb-3 border-t border-white/10" />
+            ) : (
+              <p className="px-3 pb-2 text-[11px] font-medium uppercase tracking-wider text-white/40">Administration</p>
+            )}
             <div className="space-y-0.5">
               {NAV_ADMIN.map((item) => (
-                <NavItem key={item.to} {...item} />
+                <NavItem key={item.to} {...item} compact={c} />
               ))}
             </div>
           </div>
         )}
       </nav>
 
-      <div className="border-t border-line p-3">
+      <div className="border-t border-white/10 p-3">
         <a
           href="mailto:supportarchivix@gmail.com"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-ink/65 hover:bg-ink/[0.04] hover:text-ink"
+          title={c ? "Assistance" : undefined}
+          className={`flex items-center gap-3 rounded-lg py-2 text-sm font-medium text-white/65 hover:bg-white/[0.06] hover:text-white ${c ? "justify-center" : "px-3"}`}
         >
-          <LifeBuoy size={17} /> Assistance
+          <LifeBuoy size={19} className="shrink-0 text-white/55" /> {!c && "Assistance"}
         </a>
 
         <div ref={menuRef} className="relative mt-1">
           <button
             onClick={() => setMenuOpen((o) => !o)}
-            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-ink/[0.04]"
+            title={c ? user?.fullName : undefined}
+            className={`flex w-full items-center gap-3 rounded-lg py-2 text-left hover:bg-white/[0.06] ${c ? "justify-center" : "px-2"}`}
           >
             <Avatar name={user?.fullName} size={32} />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-ink">{user?.fullName}</span>
-              <span className="block truncate text-xs text-ink/50">{ROLE_LABEL[user?.role] || user?.role}</span>
-            </span>
-            <ChevronsUpDown size={15} className="text-ink/35" />
+            {!c && (
+              <>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-white">{user?.fullName}</span>
+                  <span className="block truncate text-xs text-white/50">{ROLE_LABEL[user?.role] || user?.role}</span>
+                </span>
+                <ChevronsUpDown size={15} className="text-white/40" />
+              </>
+            )}
           </button>
           {menuOpen && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-line bg-white p-1.5 shadow-pop">
+            <div className={`absolute bottom-full left-0 mb-2 rounded-lg border border-line bg-white p-1.5 shadow-pop ${c ? "w-60" : "right-0"}`}>
               <p className="truncate px-2.5 py-1.5 text-xs text-ink/50">{user?.email}</p>
               <button
                 onClick={() => {
@@ -217,29 +258,41 @@ export default function DashboardLayout() {
   return (
     <div className="flex min-h-screen bg-paper-dim">
       {/* Barre latérale fixe (écran large) */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-line bg-white lg:block">{sidebar}</aside>
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 hidden transition-[width] duration-200 ease-out lg:block ${collapsed ? "w-[76px]" : "w-64"}`}
+      >
+        {renderSidebar(collapsed)}
+      </aside>
 
       {/* Tiroir mobile */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-ink/40" onClick={() => setDrawerOpen(false)} />
-          <aside className="animate-in absolute inset-y-0 left-0 w-72 max-w-[85%] bg-white shadow-pop">
+          <aside className="animate-in absolute inset-y-0 left-0 w-72 max-w-[85%] shadow-pop">
             <button
               onClick={() => setDrawerOpen(false)}
-              className="icon-btn-neutral absolute right-3 top-4"
+              className="icon-btn absolute right-3 top-4 z-10 text-white/60 hover:bg-white/10 hover:text-white"
               aria-label="Fermer le menu"
             >
               <X size={18} />
             </button>
-            {sidebar}
+            {renderSidebar(false)}
           </aside>
         </div>
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
+      <div className={`flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ease-out ${collapsed ? "lg:pl-[76px]" : "lg:pl-64"}`}>
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-white/90 px-4 backdrop-blur sm:px-6 lg:px-8">
           <button onClick={() => setDrawerOpen(true)} className="icon-btn-neutral lg:hidden" aria-label="Ouvrir le menu">
             <Menu size={20} />
+          </button>
+          <button
+            onClick={toggleCollapsed}
+            className="icon-btn-neutral hidden h-10 w-10 lg:inline-flex"
+            aria-label={collapsed ? "Afficher le menu" : "Réduire le menu"}
+            title={collapsed ? "Afficher le menu" : "Réduire le menu"}
+          >
+            <PanelLeft size={20} />
           </button>
 
           <form onSubmit={handleSearch} className="relative max-w-md flex-1">

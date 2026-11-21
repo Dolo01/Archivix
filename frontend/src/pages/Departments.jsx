@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Plus, Building2, Pencil, Users } from "lucide-react";
+import { Plus, Building2, Pencil, Users } from "../components/icons.jsx";
 import api from "../api/client";
+import DeptBadge from "../components/ui/DeptBadge.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import Modal from "../components/Modal.jsx";
 import PageHeader from "../components/ui/PageHeader.jsx";
@@ -102,17 +103,15 @@ export default function Departments() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {departments.map((d) => (
-            <div key={d.id} className="card flex flex-col p-5">
+          {departments.map((d, i) => (
+            <div key={d.id} className="card flex flex-col p-5 transition-shadow duration-200 hover:shadow-raised">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand">
-                    <Building2 size={18} />
-                  </span>
+                  <DeptBadge name={d.name} size={42} index={i} />
                   <p className="truncate font-semibold">{d.name}</p>
                 </div>
                 {isAdmin && (
-                  <button onClick={() => openEdit(d)} title="Modifier" className="icon-btn-neutral -mr-1 -mt-1">
+                  <button onClick={() => openEdit(d)} title="Modifier" className="act-edit">
                     <Pencil size={15} />
                   </button>
                 )}

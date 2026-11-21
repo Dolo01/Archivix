@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CheckCircle2, AlertTriangle, ExternalLink, Unplug, ShieldCheck, FolderOpen, Info } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ExternalLink, Unplug, ShieldCheck, FolderOpen, Info } from "../components/icons.jsx";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
 import PageHeader from "../components/ui/PageHeader.jsx";

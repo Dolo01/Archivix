@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import {
   ArrowLeft, ExternalLink, Share2, Pencil, Trash2, FileText, Image as ImageIcon, FileSpreadsheet,
   History, MessageSquare, Info, Printer,
-} from "lucide-react";
+} from "../components/icons.jsx";
 import api from "../api/client";
 import { printDocument } from "../api/files";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -220,7 +220,7 @@ export default function DocumentDetail() {
             <>
               <button onClick={() => setShareOpen(true)} className="btn-secondary"><Share2 size={16} /> Partager</button>
               <button onClick={openEdit} className="btn-primary"><Pencil size={16} /> Modifier</button>
-              <button onClick={remove} className="icon-btn-danger h-10 w-10" title="Supprimer" aria-label="Supprimer"><Trash2 size={17} /></button>
+              <button onClick={remove} className="act-delete h-10 w-10" title="Supprimer" aria-label="Supprimer"><Trash2 size={17} /></button>
             </>
           )}
         </div>

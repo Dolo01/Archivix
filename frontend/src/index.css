@@ -63,7 +63,7 @@ body {
     @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-brand px-4 py-2.5 text-white shadow-card hover:bg-brand-dark;
+    @apply btn bg-gradient-to-b from-[#2563EB] to-brand px-4 py-2.5 text-white shadow-[0_1px_2px_rgba(16,24,40,0.12),inset_0_1px_0_rgba(255,255,255,0.18)] ring-1 ring-inset ring-brand-dark/40 hover:from-brand hover:to-brand-dark;
   }
   .btn-dark {
     @apply btn bg-ink px-4 py-2.5 text-white shadow-card hover:bg-ink-light;
@@ -96,6 +96,22 @@ body {
   .icon-btn-brand { @apply icon-btn hover:bg-brand-50 hover:text-brand; }
   .icon-btn-success { @apply icon-btn text-success hover:bg-success-light; }
   .icon-btn-danger { @apply icon-btn hover:bg-danger-light hover:text-danger; }
+
+  /* Boutons d'action colorés (lignes de documents, membres…) :
+     couleur visible au repos, léger soulèvement au survol, enfoncement au clic */
+  .act {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-lg ring-1 ring-inset transition duration-150 ease-out
+      motion-safe:hover:-translate-y-0.5 hover:shadow-raised motion-safe:active:translate-y-0 motion-safe:active:scale-95
+      disabled:pointer-events-none disabled:opacity-50;
+  }
+  .act svg { @apply transition-transform duration-150 ease-out; }
+  .act:hover svg { @apply motion-safe:scale-110; }
+  .act-chat { @apply act bg-sky-50 text-sky-600 ring-sky-100 hover:bg-sky-100 hover:text-sky-700; }
+  .act-open { @apply act bg-indigo-50 text-indigo-600 ring-indigo-100 hover:bg-indigo-100 hover:text-indigo-700; }
+  .act-print { @apply act bg-slate-100 text-slate-600 ring-slate-200 hover:bg-slate-200 hover:text-slate-800; }
+  .act-share { @apply act bg-violet-50 text-violet-600 ring-violet-100 hover:bg-violet-100 hover:text-violet-700; }
+  .act-edit { @apply act bg-amber-50 text-amber-600 ring-amber-100 hover:bg-amber-100 hover:text-amber-700; }
+  .act-delete { @apply act bg-rose-50 text-rose-600 ring-rose-100 hover:bg-rose-100 hover:text-rose-700; }
 
   /* ---------- Formulaires ---------- */
   .input {

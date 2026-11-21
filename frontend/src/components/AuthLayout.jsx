@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ShieldCheck, KeyRound, ScrollText } from "lucide-react";
+import { ShieldCheck, KeyRound, ScrollText } from "./icons.jsx";
 import Logo from "./Logo.jsx";
 
 const GARANTIES = [
