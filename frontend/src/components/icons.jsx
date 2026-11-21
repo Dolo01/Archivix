@@ -46,6 +46,7 @@ import {
   MagnifyingGlass as PMagnifyingGlass,
   Minus as PMinus,
   PaperPlaneRight as PPaperPlaneRight,
+  SidebarSimple as PSidebarSimple,
   PencilSimple as PPencilSimple,
   Plugs as PPlugs,
   Plus as PPlus,
@@ -131,6 +132,7 @@ export const MailCheck = make("MailCheck", PEnvelopeOpen);
 export const Menu = make("Menu", PList);
 export const MessageSquare = make("MessageSquare", PChatText);
 export const Minus = make("Minus", PMinus);
+export const PanelLeft = make("PanelLeft", PSidebarSimple);
 export const Pencil = make("Pencil", PPencilSimple);
 export const Plus = make("Plus", PPlus);
 export const Power = make("Power", PPower);

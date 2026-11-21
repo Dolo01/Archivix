@@ -111,7 +111,7 @@ export default function Departments() {
                   <p className="truncate font-semibold">{d.name}</p>
                 </div>
                 {isAdmin && (
-                  <button onClick={() => openEdit(d)} title="Modifier" className="icon-btn-neutral -mr-1 -mt-1">
+                  <button onClick={() => openEdit(d)} title="Modifier" className="act-edit">
                     <Pencil size={15} />
                   </button>
                 )}

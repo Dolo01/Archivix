@@ -195,10 +195,10 @@ export default function Team() {
                     </span>
                   </td>
                   <td>
-                    <div className="flex items-center justify-end gap-0.5">
-                      <button onClick={() => openEdit(u)} title="Modifier" className="icon-btn-neutral"><Pencil size={15} /></button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button onClick={() => openEdit(u)} title="Modifier" className="act-edit"><Pencil size={15} /></button>
                       {u.id !== currentUser?.id && (
-                        <button onClick={() => handleDelete(u)} title="Retirer" className="icon-btn-danger"><Trash2 size={15} /></button>
+                        <button onClick={() => handleDelete(u)} title="Retirer" className="act-delete"><Trash2 size={15} /></button>
                       )}
                     </div>
                   </td>

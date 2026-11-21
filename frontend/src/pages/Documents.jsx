@@ -367,10 +367,10 @@ export default function Documents() {
                 </button>
                 <span className="pr-2 text-xs tabular-nums text-ink/40 group-hover:hidden">{f.documentsCount}</span>
                 {canManage && (
-                  <span className="hidden items-center pr-1 group-hover:flex">
-                    <button onClick={() => setShareFolder(f)} title="Partager" className="icon-btn-brand h-7 w-7"><Share2 size={13} /></button>
-                    <button onClick={() => { setError(""); setEditFolder(f); }} title="Renommer" className="icon-btn-neutral h-7 w-7"><Pencil size={13} /></button>
-                    <button onClick={() => handleDeleteFolder(f)} title="Supprimer" className="icon-btn-danger h-7 w-7"><Trash2 size={13} /></button>
+                  <span className="hidden items-center gap-1 pr-1 group-hover:flex">
+                    <button onClick={() => setShareFolder(f)} title="Partager" className="act-share h-7 w-7"><Share2 size={13} /></button>
+                    <button onClick={() => { setError(""); setEditFolder(f); }} title="Renommer" className="act-edit h-7 w-7"><Pencil size={13} /></button>
+                    <button onClick={() => handleDeleteFolder(f)} title="Supprimer" className="act-delete h-7 w-7"><Trash2 size={13} /></button>
                   </span>
                 )}
               </div>
@@ -484,19 +484,19 @@ export default function Documents() {
                         </td>
                         <td className="whitespace-nowrap text-right tabular-nums text-ink/60">{formatSize(doc.sizeKb)}</td>
                         <td>
-                          <div className="flex items-center justify-end gap-0.5">
-                            <button onClick={() => setChatDoc(doc)} title="Discussion" className="icon-btn-info"><MessageSquare size={15} /></button>
-                            <button onClick={() => openDocument(doc)} title="Ouvrir" aria-label="Ouvrir" className="icon-btn-neutral">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button onClick={() => setChatDoc(doc)} title="Discussion" className="act-chat"><MessageSquare size={15} /></button>
+                            <button onClick={() => openDocument(doc)} title="Ouvrir" aria-label="Ouvrir" className="act-open">
                               <ExternalLink size={15} />
                             </button>
-                            <button onClick={() => handlePrint(doc)} disabled={printingId === doc.id} title="Imprimer" aria-label="Imprimer" className="icon-btn-neutral">
+                            <button onClick={() => handlePrint(doc)} disabled={printingId === doc.id} title="Imprimer" aria-label="Imprimer" className="act-print">
                               <Printer size={15} className={printingId === doc.id ? "animate-pulse" : ""} />
                             </button>
                             {canManage && (
                               <>
-                                <button onClick={() => setShareDoc(doc)} title="Partager" className="icon-btn-brand"><Share2 size={15} /></button>
-                                <button onClick={() => openEdit(doc)} title="Modifier" className="icon-btn-neutral"><Pencil size={15} /></button>
-                                <button onClick={() => handleDelete(doc)} title="Supprimer" className="icon-btn-danger"><Trash2 size={15} /></button>
+                                <button onClick={() => setShareDoc(doc)} title="Partager" className="act-share"><Share2 size={15} /></button>
+                                <button onClick={() => openEdit(doc)} title="Modifier" className="act-edit"><Pencil size={15} /></button>
+                                <button onClick={() => handleDelete(doc)} title="Supprimer" className="act-delete"><Trash2 size={15} /></button>
                               </>
                             )}
                           </div>
