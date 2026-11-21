@@ -104,7 +104,8 @@ export default function Departments() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {departments.map((d, i) => (
-            <div key={d.id} className="card flex flex-col p-5 transition-shadow duration-200 hover:shadow-raised">
+            <div key={d.id} className="card relative flex flex-col overflow-hidden p-5 pt-6 transition duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-raised">
+              <div className={`absolute inset-x-0 top-0 h-1 ${["bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-violet-500", "bg-rose-500", "bg-cyan-500", "bg-indigo-500"][i % 7]}`} />
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <DeptBadge name={d.name} size={42} index={i} />
@@ -119,8 +120,10 @@ export default function Departments() {
               <p className="mt-3 line-clamp-2 flex-1 text-sm text-ink/60">
                 {d.description || <span className="text-ink/35">Aucune description</span>}
               </p>
-              <div className="mt-4 flex items-center gap-1.5 border-t border-line pt-3 text-xs text-ink/55">
-                <Users size={13} /> {d.membres} membre{d.membres > 1 ? "s" : ""}
+              <div className="mt-4 border-t border-line pt-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-paper-dim px-2.5 py-1 text-xs font-medium text-ink/65">
+                  <Users size={13} /> {d.membres} membre{d.membres > 1 ? "s" : ""}
+                </span>
               </div>
             </div>
           ))}

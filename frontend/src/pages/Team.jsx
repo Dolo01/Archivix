@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
-import { UserPlus, Trash2, Pencil, Search, Users } from "../components/icons.jsx";
+import { UserPlus, Trash2, Pencil, Search, Users, ShieldCheck } from "../components/icons.jsx";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
 import Modal from "../components/Modal.jsx";
 import PageHeader from "../components/ui/PageHeader.jsx";
+import StatCard from "../components/ui/StatCard.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import Field from "../components/ui/Field.jsx";
 import Avatar from "../components/ui/Avatar.jsx";
 
 const ROLE_LABEL = { admin: "Administrateur", gestionnaire: "Gestionnaire", lecteur: "Lecteur" };
-const ROLE_BADGE = { admin: "badge-brand", gestionnaire: "badge-neutral", lecteur: "badge-neutral" };
+const ROLE_BADGE = {
+  admin: "badge bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-100",
+  gestionnaire: "badge bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100",
+  lecteur: "badge bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200",
+};
 
 function RoleSelect({ value, onChange }) {
   return (
@@ -145,6 +150,13 @@ export default function Team() {
           </button>
         }
       />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard tone="blue" icon={Users} label="Comptes" value={users.length} hint="Dans votre organisation" />
+        <StatCard tone="emerald" icon={UserPlus} label="Comptes actifs" value={activeCount} hint={`${users.length - activeCount} désactivé${users.length - activeCount > 1 ? "s" : ""}`} />
+        <StatCard tone="violet" icon={ShieldCheck} label="Administrateurs" value={users.filter((u) => u.role === "admin").length} hint="Accès complet" />
+        <StatCard tone="amber" icon={Pencil} label="Gestionnaires" value={users.filter((u) => u.role === "gestionnaire").length} hint="Dépôt et classement" />
+      </div>
 
       {notice && (
         <div className="alert-success flex items-start justify-between gap-3">

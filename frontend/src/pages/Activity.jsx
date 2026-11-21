@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Download, History, Lock, ChevronLeft, ChevronRight } from "../components/icons.jsx";
+import { Download, History, Lock, ChevronLeft, ChevronRight, UploadCloud, Eye, Printer, Pencil, Share2, Trash2 } from "../components/icons.jsx";
 import api from "../api/client";
 import PageHeader from "../components/ui/PageHeader.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
-import Avatar from "../components/ui/Avatar.jsx";
 import { ACTION_META, describeActivity, verbFor } from "../utils/activity.js";
+
+const ACTION_ICON = { archivage: UploadCloud, consultation: Eye, impression: Printer, modification: Pencil, partage: Share2, suppression: Trash2 };
 
 const PERIODES = [
   { value: 7, label: "7 derniers jours" },
@@ -163,7 +164,14 @@ export default function Activity() {
                       </td>
                       <td className="min-w-[260px]">
                         <div className="flex items-start gap-3">
-                          <Avatar name={e.userName || "?"} size={30} />
+                          {(() => {
+                            const Ic = ACTION_ICON[e.action] || Pencil;
+                            return (
+                              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${meta.tile}`} title={meta.label}>
+                                <Ic size={16} />
+                              </span>
+                            );
+                          })()}
                           <div className="min-w-0">
                             <p className="text-sm">
                               <b>{e.userName || "Un membre"}</b>{" "}

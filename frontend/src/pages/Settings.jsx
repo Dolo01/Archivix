@@ -16,8 +16,8 @@ const ERREURS = {
 function DriveLogo({ size = 28 }) {
   // Pictogramme générique de stockage en ligne (pas de logo de marque)
   return (
-    <span className="flex shrink-0 items-center justify-center rounded-lg border border-line bg-white shadow-card" style={{ width: size + 16, height: size + 16 }}>
-      <FolderOpen size={size * 0.75} className="text-brand" />
+    <span className="flex shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-100" style={{ width: size + 16, height: size + 16 }}>
+      <FolderOpen size={size * 0.75} />
     </span>
   );
 }
