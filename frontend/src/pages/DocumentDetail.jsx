@@ -214,11 +214,11 @@ export default function DocumentDetail() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={openFull} className="btn-secondary"><ExternalLink size={16} /> Ouvrir</button>
-          <button onClick={handlePrint} disabled={printing} className="btn-secondary"><Printer size={16} /> {printing ? "Préparation…" : "Imprimer"}</button>
+          <button onClick={openFull} className="btn-soft-indigo"><ExternalLink size={16} /> Ouvrir</button>
+          <button onClick={handlePrint} disabled={printing} className="btn-soft-slate"><Printer size={16} /> {printing ? "Préparation…" : "Imprimer"}</button>
           {canManage && (
             <>
-              <button onClick={() => setShareOpen(true)} className="btn-secondary"><Share2 size={16} /> Partager</button>
+              <button onClick={() => setShareOpen(true)} className="btn-soft-violet"><Share2 size={16} /> Partager</button>
               <button onClick={openEdit} className="btn-primary"><Pencil size={16} /> Modifier</button>
               <button onClick={remove} className="act-delete h-10 w-10" title="Supprimer" aria-label="Supprimer"><Trash2 size={17} /></button>
             </>

@@ -112,13 +112,13 @@ export default function Billing() {
       <PlanCards
         duree={duree}
         currentPlan={tenant?.plan}
-        renderAction={(p) =>
+        renderAction={(p, _current, t) =>
           p.surDevis ? (
-            <a href={`mailto:${coordonnees?.contactEntreprise || ""}?subject=Offre Institution Archivix`} className="btn-secondary w-full">
+            <a href={`mailto:${coordonnees?.contactEntreprise || ""}?subject=Offre Institution Archivix`} className={`${t.btn} w-full`}>
               <Mail size={15} /> Nous contacter
             </a>
           ) : (
-            <button onClick={() => openPlan(p)} className={`${p.recommande ? "btn-primary" : "btn-secondary"} w-full`}>
+            <button onClick={() => openPlan(p)} className={`${t.btn} w-full`}>
               {tenant?.plan === p.id ? "Renouveler" : `Choisir ${p.label}`}
             </button>
           )
@@ -139,7 +139,7 @@ export default function Billing() {
               "Votre demande est vérifiée puis votre abonnement est activé.",
             ].map((t, i) => (
               <li key={i} className="flex gap-3 text-sm text-ink/70">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-dark">{i + 1}</span>
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white shadow-card ${["bg-blue-500", "bg-violet-500", "bg-amber-500", "bg-emerald-500"][i]}`}>{i + 1}</span>
                 {t}
               </li>
             ))}
@@ -206,10 +206,15 @@ export default function Billing() {
                   type="button"
                   key={m}
                   onClick={() => setForm({ ...form, moyenPaiement: m })}
-                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
-                    form.moyenPaiement === m ? "border-brand bg-brand-50 text-brand-dark ring-1 ring-brand" : "border-line text-ink/65 hover:bg-paper-dim"
+                  className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                    form.moyenPaiement === m
+                      ? m === "wave"
+                        ? "border-sky-400 bg-sky-50 text-sky-800 ring-1 ring-sky-400"
+                        : "border-orange-400 bg-orange-50 text-orange-800 ring-1 ring-orange-400"
+                      : "border-line text-ink/65 hover:bg-paper-dim"
                   }`}
                 >
+                  <span className={`h-2.5 w-2.5 rounded-full ${m === "wave" ? "bg-sky-400" : "bg-orange-500"}`} />
                   {PAYMENT_LABEL[m]}
                 </button>
               ))}

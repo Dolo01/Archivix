@@ -1,11 +1,12 @@
 // Libellés et couleurs des actions du journal d'activité.
+// tile : pastille de l'icône ; badge : étiquette du type ; dot : point de la frise
 export const ACTION_META = {
-  archivage: { label: "Archivage", badge: "badge-success", dot: "bg-success" },
-  consultation: { label: "Consultation", badge: "badge-neutral", dot: "bg-ink/30" },
-  impression: { label: "Impression", badge: "badge-neutral", dot: "bg-ink/50" },
-  modification: { label: "Modification", badge: "badge-brand", dot: "bg-brand" },
-  partage: { label: "Partage", badge: "badge-warning", dot: "bg-warning" },
-  suppression: { label: "Suppression", badge: "badge-danger", dot: "bg-danger" },
+  archivage: { label: "Archivage", badge: "badge bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100", dot: "bg-emerald-500", tile: "bg-emerald-50 text-emerald-600" },
+  consultation: { label: "Consultation", badge: "badge bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-100", dot: "bg-sky-500", tile: "bg-sky-50 text-sky-600" },
+  impression: { label: "Impression", badge: "badge bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200", dot: "bg-slate-500", tile: "bg-slate-100 text-slate-600" },
+  modification: { label: "Modification", badge: "badge bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100", dot: "bg-amber-500", tile: "bg-amber-50 text-amber-600" },
+  partage: { label: "Partage", badge: "badge bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-100", dot: "bg-violet-500", tile: "bg-violet-50 text-violet-600" },
+  suppression: { label: "Suppression", badge: "badge bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-100", dot: "bg-rose-500", tile: "bg-rose-50 text-rose-600" },
 };
 
 const VERBES = {
