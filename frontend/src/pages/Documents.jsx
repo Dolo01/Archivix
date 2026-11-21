@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import {
   Search, UploadCloud, Plus, MessageSquare, Pencil, Trash2, ExternalLink, Share2, Printer,
   FolderPlus, Folder, FolderOpen, FileText, ChevronLeft, ChevronRight, Users,
-} from "lucide-react";
+} from "../components/icons.jsx";
 import api from "../api/client";
 import { openDocument, printDocument } from "../api/files";
 import SealBadge from "../components/SealBadge.jsx";

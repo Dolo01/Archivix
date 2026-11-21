@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import {
   ArrowLeft, ExternalLink, Share2, Pencil, Trash2, FileText, Image as ImageIcon, FileSpreadsheet,
   History, MessageSquare, Info, Printer,
-} from "lucide-react";
+} from "../components/icons.jsx";
 import api from "../api/client";
 import { printDocument } from "../api/files";
 import { useAuth } from "../context/AuthContext.jsx";

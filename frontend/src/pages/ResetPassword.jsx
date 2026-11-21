@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "../components/icons.jsx";
 import api from "../api/client";
 import AuthLayout from "../components/AuthLayout.jsx";
 import Field from "../components/ui/Field.jsx";

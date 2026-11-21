@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BellRing, BellOff, Smartphone } from "lucide-react";
+import { BellRing, BellOff, Smartphone } from "./icons.jsx";
 import { pushStatus, enablePush, disablePush, sendTestPush } from "../api/push";
 
 const HELP = {

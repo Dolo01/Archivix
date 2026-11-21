@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Download, History, Lock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Download, History, Lock, ChevronLeft, ChevronRight } from "../components/icons.jsx";
 import api from "../api/client";
 import PageHeader from "../components/ui/PageHeader.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { MailCheck } from "lucide-react";
+import { MailCheck } from "../components/icons.jsx";
 import api from "../api/client";
 import AuthLayout from "../components/AuthLayout.jsx";
 import Field from "../components/ui/Field.jsx";

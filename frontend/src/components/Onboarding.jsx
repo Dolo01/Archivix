@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Check, X } from "lucide-react";
+import { Check, X } from "./icons.jsx";
 
 /**
  * Mise en route guidée affichée à l'administrateur tant que les étapes essentielles ne sont pas faites.

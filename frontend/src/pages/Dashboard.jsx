@@ -10,7 +10,7 @@ import {
   FileText,
   AlertTriangle,
   Info,
-} from "lucide-react";
+} from "../components/icons.jsx";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
 import PageHeader from "../components/ui/PageHeader.jsx";

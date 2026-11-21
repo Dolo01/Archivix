@@ -17,7 +17,7 @@ import {
   History,
   KeyRound,
   Lock,
-} from "lucide-react";
+} from "../components/icons.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import api from "../api/client";
 import { getSocket } from "../api/socket";
@@ -53,8 +53,12 @@ function NavItem({ to, label, icon: Icon, end, onClick }) {
         }`
       }
     >
-      <Icon size={17} strokeWidth={2} />
-      {label}
+      {({ isActive }) => (
+        <>
+          <Icon size={19} active={isActive} />
+          {label}
+        </>
+      )}
     </NavLink>
   );
 }

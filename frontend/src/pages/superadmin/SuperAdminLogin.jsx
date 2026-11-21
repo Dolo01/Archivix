@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import superAdminApi from "../../api/superAdminClient";
 import { useSuperAdmin } from "../../context/SuperAdminContext.jsx";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "../../components/icons.jsx";
 import Logo from "../../components/Logo.jsx";
 import Field from "../../components/ui/Field.jsx";
 

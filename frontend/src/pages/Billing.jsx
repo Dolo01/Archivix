@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Smartphone, CheckCircle2, ShieldAlert, Clock, XCircle, Copy, Mail, Check, Info } from "lucide-react";
+import { Smartphone, CheckCircle2, ShieldAlert, Clock, XCircle, Copy, Mail, Check, Info } from "../components/icons.jsx";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
 import Modal from "../components/Modal.jsx";

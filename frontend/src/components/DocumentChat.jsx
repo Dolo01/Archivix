@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Send } from "lucide-react";
+import { Send } from "./icons.jsx";
 import api from "../api/client";
 import { getSocket } from "../api/socket";
 import { useAuth } from "../context/AuthContext.jsx";
