@@ -5,6 +5,7 @@ import {
   FolderPlus, Folder, FolderOpen, FileText, ChevronLeft, ChevronRight, Users,
 } from "../components/icons.jsx";
 import api from "../api/client";
+import FileIcon from "../components/ui/FileIcon.jsx";
 import { openDocument, printDocument } from "../api/files";
 import SealBadge from "../components/SealBadge.jsx";
 import Modal from "../components/Modal.jsx";
@@ -460,9 +461,7 @@ export default function Documents() {
                       <tr key={doc.id}>
                         <td className="max-w-[300px]">
                           <div className="flex items-center gap-3">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-paper-dim text-ink/50">
-                              <FileText size={16} />
-                            </span>
+                            <FileIcon mimeType={doc.mimeType} fileName={doc.fileName} size={38} />
                             <div className="min-w-0">
                               <Link to={`/app/documents/${doc.id}`} className="block max-w-full truncate text-left font-medium hover:text-brand">
                                 {doc.title}

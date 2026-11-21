@@ -63,7 +63,7 @@ body {
     @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-brand px-4 py-2.5 text-white shadow-card hover:bg-brand-dark;
+    @apply btn bg-gradient-to-b from-[#2563EB] to-brand px-4 py-2.5 text-white shadow-[0_1px_2px_rgba(16,24,40,0.12),inset_0_1px_0_rgba(255,255,255,0.18)] ring-1 ring-inset ring-brand-dark/40 hover:from-brand hover:to-brand-dark;
   }
   .btn-dark {
     @apply btn bg-ink px-4 py-2.5 text-white shadow-card hover:bg-ink-light;
